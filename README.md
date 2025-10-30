@@ -74,6 +74,19 @@
   - UniformGrid: Grid와 동일하나 행과 열 너비를 균등하게 배치함
   - WrapPanel: StackPanel과 비슷하나 너비 또는 높이가 부족하면 다음 행 또는 열에 이어서 배치함
 
+* 레이아웃은 다음과 같은 공통 프로퍼티를 가지고 있습니다.
+  - Width, Height: 요소의 너비와 높이를 의미하며 이 값을 지정하면 요소 크기가 고정됩니다. 가변 크기일 경우 지정하지 마십시오.
+  - MinWidth, MaxWidth: 요소의 최소 너비와 높이
+  - MinHeight, MaxHeight: 요소의 최대 너비와 높이
+  - HorizontalAlignment: Stretch (기본값이며 최대한 공간을 요소로 채우려고 함), Left, Center, Right (요소를 좌측/중앙/우측 정렬시킴)
+  - VerticalAlignment: Stretch (기본값이며 최대한 공간을 요소로 채우려고 함), Top, Center, Bottom (요소를 상단/중앙/하단 정렬시킴)
+  - Margin: 요소 외부의 여백 공간을 의미합니다. (4개의 숫자를 입력하면 왼쪽, 위, 오른쪽, 아래의 폭을 의미하고 2개의 숫자를 입력하면 좌우측과 위아래의 폭을 의미하고 1개의 숫자를 입력하면 모든 폭을 의미함)
+  - Padding: 요소 내부의 여백 공간을 의미합니다. (내부에 요소를 품을 수 있는 요소만 가지고 있는 프로퍼티)
+  - Visibility: Collapsed (요소가 없으면 차지하는 공간이 제로), Hidden (요소가 보이지 않아도 차지하는 공간은 유지됨), Visible (요소가 보임)
+  - FlowDirection: 기본적으로는 시스템 로케일 설정을 따름, RightToLeft라고 입력하면 오른쪽부터 배치됨 (아랍어, 히브리어 등), 보통은 LeftToRight를 사용합니다.
+  - Panel.ZIndex:  기본값은 0, 숫자가 커질수록 가장 위에 올라옵니다.
+  - RenderTransform, LayoutTransform: 본 요소 및 자식 요소에 이동, 스케일링, 회전을 적용할 때 사용됩니다. (RenderTransform은 적용된 요소에만 효과가 발동하고, LayoutTransform은 적용된 요소와 그것을 감싸는 부모 요소까지 효과가 발동됨)
+
 * Grid 레이아웃 예제
   - RowDefinition, ColumnDefinition 개수만큼 행/열이 생성됨
   - 내부 요소는 Row, Column 번호를 지정하여 위치를 정할 수 있고, RowSpan, ColumnSpan을 지정하여 차지하는 행/열 개수를 지정할 수 있음
@@ -348,4 +361,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 84/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 132/867 -->
