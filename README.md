@@ -5,6 +5,23 @@
 ## WPF 애플리케이션
 
 * WPF 애플리케이션은 System.Windows 네임스페이스의 Application 클래스의 인스턴스를 가지고 있습니다.
+  - 최상위 창: Application 객체의 MainWindow 프로퍼티에 설정된 창이며 1개 혹은 여러 개가 될 수도 있습니다.
+  - 애플리케이션 셧다운 관련 옵션: 여러 최상위 창이 있을 때에는 OnLastWindowsClose, 단일 최상위 창이 있을 때에는 OnMainWindowClose, 수동 Shutdown 함수를 호출해야 할 경우에는 OnExplicitShutdown 모드를 설정해야 합니다.
+    ```xaml
+    <Application
+      x:Class="AppWindowsSample.App"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      StartupUri="Window1.xaml"
+      ShutdownMode="OnExplicitShutdown" />
+    ```
+  - 애플리케이션 이벤트: 생애 주기에 따라 Startup, Activated, Deactivated, DispatcherUnhandledException, SessionEnding, Exit 이벤트가 있습니다.
+    * Startup 이벤트: 애플리케이션의 Run 메서드가 호출될 때 발동하는 이벤트입니다. (주로 초기화를 수행함, Mutex를 이용하여 다중 인스턴스를 방지할 수 있음)
+    * Activated 이벤트: 최상위 창이 활성화되면 Activated 이벤트가 발동합니다.
+    * Deactivated 이벤트: 다른 애플리케이션의 최상위 창이 활성화되면 Deactivated 이벤트가 발동합니다.
+    * DispatcherUnhandledException 이벤트: 디스패처(dispatcher)는 이벤트를 처리하는 객체인데 만약 예외가 발생하면 데이터 손실을 막기 위해 이 이벤트를 활용할 수 있습니다.
+    * SessionEnding 이벤트: 윈도우 세션이 끝날 때 호출됩니다. (윈도우의 종료, 로그아웃, 재시작)
+    * Exit 이벤트: 애플리케이션이 닫힐 때 호출됩니다.
 
 * 코드는 "외형"(창 속성)과 "행동"(이벤트 처리)을 정의하는 두 부분을 나뉩니다.
   - 여기서 "외형"을 정의하는 코드를 따로 분리할 수 있는데 C# 코드를 통해 정의할 수도 있고, WPF의 경우 XAML로 정의할 수 있습니다.
@@ -325,4 +342,10 @@
   - 이외에도 3D 이미지, 고급 문서 (타이포그래피, 스펠체크 등), 인쇄 기능도 제공합니다.
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 59/867 -->
+
+
+
+
+
+
+<!-- Programming WPF 2nd edition 참조... 페이지 84/867 -->
