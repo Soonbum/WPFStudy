@@ -1,5 +1,7 @@
 # WPF (Windows Presentation Foundation)
 
+본 내용은 O'REILLY에서 출판한 Programming WPF 2nd edition을 참고하였습니다.
+
 ## WPF 애플리케이션
 
 * WPF 애플리케이션은 System.Windows 네임스페이스의 Application 클래스의 인스턴스를 가지고 있습니다.
@@ -107,7 +109,7 @@
     ```csharp
     // 클래스 Nickname
     public class Nickname : INotifyPropertyChanged {
-        // INotifyPropertyChanged Member
+        // INotifyPropertyChanged 멤버
         public event PropertyChangedEventHandler PropertyChanged;  // 인터페이스 정의 때문에 PropertyChanged 이벤트 핸들러가 포함되어 있어야 함
         void Notify(string propName) {
             if (PropertyChanged != null) {
@@ -179,6 +181,148 @@
     </Window>
     ```
 
+* 데이터 템플릿
+  - ItemTemplate 프로퍼티를 설정하여 각 ListBox 아이템이 삽입될 데이터 템플릿을 지정합니다.
+    ```xaml
+    <ListBox
+      ItemsSource="{Binding}"
+      IsSynchronizedWithCurrentItem="True">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <TextBlock>
+            <TextBlock Text="{Binding Path=Name}" />:
+            <TextBlock Text="{Binding Path=Nick}" />
+          </TextBlock>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    ```
+
+### 리소스
+
+* 리소스는 애플리케이션에 포함되어 있지만 코드와 분리된 데이터를 의미합니다. (png 이미지, 텍스트 등)
+  - Window.Resources로 정의한 리소스 예제는 다음과 같습니다. XAML 안에 정의한 정적 리소스는 StaticResource로 참조할 수 있습니다.
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ... xmlns:local="clr-namespace:DataBindingDemo" />
+      <Window.Resources>
+        <local:Nicknames x:Key="names">
+          <local:Nickname Name="Don" Nick="Naked" />
+          <local:Nickname Name="Martin" Nick="Gudge" />
+          <local:Nickname Name="Tim" Nick="Stinky" />
+        </local:Nicknames>
+      </Window.Resources>
+      <DockPanel DataContext="{StaticResource names}">
+        <TextBlock DockPanel.Dock="Top" Orientation="Horizontal">
+          <TextBlock VerticalAlignment="Center">Name: </TextBlock>
+          <TextBox Text="{Binding Path=Name}" />
+          <TextBlock VerticalAlignment="Center">Nick: </TextBlock>
+          <TextBox Text="{Binding Path=Nick}" />
+        </TextBlock>
+        ...
+      </DockPanel>
+    </Window>
+    ```
+  - CS 코드에서도 다음과 같이 정적 리소스를 불러올 수 있습니다.
+    ```xaml
+    public partial class Window1 : Window {
+        Nicknames names;
+    
+        public Window1() {
+            InitializeComponent();
+            this.addButton.Click += addButton_Click;
+
+            // 리소스에서 names 컬렉션 가져오기
+            this.names = (Nicknames)this.FindResource("names");
+
+            // 위 코드가 있으므로 여기서 바인딩할 필요가 없음
+            //dockPanel.DataContext = this.names;
+        }
+
+        void addButton_Click(object sender, RoutedEventArgs e) {
+            this.names.Add(new Nickname());
+        }
+    }
+    ```
+
+### 스타일
+
+* 스타일은 여러 요소에 적용할 수 있는 프로퍼티/값의 집합입니다.
+  - 요소의 프로퍼티를 직접 설정하는 방법은 다음과 같습니다. (마치 HTML 태그에 프로퍼티를 직접 지정하는 것과 비슷함)
+    ```xaml
+    <Window ...>
+      <DockPanel ...>
+        <TextBlock ...>
+          <TextBlock VerticalAlignment="Center">Name: </TextBlock>
+          <TextBox Text="{Binding Path=Name}" />
+          <TextBlock VerticalAlignment="Center">Nick: </TextBlock>
+          <TextBox Text="{Binding Path=Nick}" />
+        </TextBlock>
+        ...
+      </DockPanel>
+    </Window>
+    ```
+  - 스타일 리소스를 만들고 그것을 적용하는 방법은 다음과 같습니다. (마치 CSS에 스타일을 지정하고 태그에 스타일 이름을 지정하는 것과 비슷함)
+    ```xaml
+    <Window ...>
+      <Window.Resources>
+        ...
+        <Style x:Key="myStyle" TargetType="{x:Type TextBlock}">
+          <Setter Property="VerticalAlignment" Value="Center" />
+          <Setter Property="Margin" Value="2" />
+          <Setter Property="FontWeight" Value="Bold" />
+          <Setter Property="FontStyle" Value="Italic" />
+        </Style>
+      </Window.Resources>
+      <DockPanel ...>
+        <TextBlock ...>
+          <TextBlock Style="{StaticResource myStyle}">Name: </TextBlock>
+          <TextBox Text="{Binding Path=Name}" />
+          <TextBlock Style="{StaticResource myStyle}">Nick: </TextBlock>
+          <TextBox Text="{Binding Path=Nick}" />
+        </TextBlock>
+        ...
+      </DockPanel>
+    </Window>
+    ```
+
+* 컨트롤 템플릿
+  - ControlTemplate 프로퍼티를 이용해서 컨트롤의 외형을 바꿀 수도 있습니다.
+  - 다음 예시는 버튼의 외형을 Ellipse 모양으로 바꾼 것입니다. (너비 128, 높이 32, 채우기 Yellow, 선 Black)
+    ```xaml
+    <Button DockPanel.Dock="Bottom" x:Name="addButton" Content="Add">
+      <Button.Template>
+        <ControlTemplate TargetType="{x:Type Button}">
+          <Grid>
+            <Ellipse Width="128" Height="32" Fill="Yellow" Stroke="Black" />
+            <ContentPresenter
+              VerticalAlignment="Center" HorizontalAlignment="Center" />
+          </Grid>
+        </ControlTemplate>
+      </Button.Template>
+    </Button>
+    ```
+
+* 그래픽
+  - 텍스트로 직접 아이콘 등을 그릴 수도 있습니다.
+  - 다음 예제는 Ellipse와 Path 요소를 이용해서 스마일 아이콘을 그린 것입니다. 버튼 안에 스마일 아이콘과 Click! 텍스트가 들어가 있습니다. ScaleTransform은 확대 비율을 조정할 수 있습니다.
+    ```xaml
+    <Button>
+      <Button.LayoutTransform>
+        <ScaleTransform ScaleX="3" ScaleY="3" />
+      </Button.LayoutTransform>
+      <StackPanel Orientation="Horizontal">
+        <Canvas Width="20" Height="18" VerticalAlignment="Center">
+          <Ellipse Canvas.Left="1" Canvas.Top="1" Width="16" Height="16" Fill="Yellow" Stroke="Black" />
+          <Ellipse Canvas.Left="4.5" Canvas.Top="5" Width="2.5" Height="3" Fill="Black" />
+          <Ellipse Canvas.Left="11" Canvas.Top="5" Width="2.5" Height="3" Fill="Black" />
+          <Path Data="M 5,10 A 3,3 0 0 0 13,10" Stroke="Black" />
+        </Canvas>
+        <TextBlock VerticalAlignment="Center">Click!</TextBlock>
+      </StackPanel>
+    </Button>
+    ```
+  - 이외에도 3D 이미지, 고급 문서 (타이포그래피, 스펠체크 등), 인쇄 기능도 제공합니다.
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 49/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 59/867 -->
