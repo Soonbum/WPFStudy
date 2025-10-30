@@ -354,11 +354,38 @@
     ```
   - 이외에도 3D 이미지, 고급 문서 (타이포그래피, 스펠체크 등), 인쇄 기능도 제공합니다.
 
+## 입력
+
+* 입력 이벤트는 다음에 의해 발생할 수 있습니다.: 키보드, 마우스, 잉크
+
+* Routed Event의 종류는 다음과 같습니다.
+  - Bubbling 이벤트: 중첩된 요소들이 있을 때 하위 요소에서 이벤트가 발생하면 트리의 상위 요소까지 모든 이벤트가 순서대로 발생합니다. (일반적인 경우)
+  - Tunneling 이벤트: Bubbling 이벤트와 반대로 트리 루트 이벤트부터 시작하여 가장 하위 요소까지의 이벤트가 순서대로 발생합니다. (Preview 접두사가 붙어 있음, Tunneling 이벤트 직후에 Bubbling 이벤트가 작동하게 되며 상위 요소를 미리 체크하여 무언가를 처리할 경우 이것을 사용하면 됨)
+  - Direct 이벤트: 이벤트가 직접적으로 발생한 요소에서만 이벤트가 발생합니다.
+
+* 이벤트 종류
+  - 마우스 입력
+    | 이벤트 이름 | 라우팅 | 의미 |
+    | --- | --- | --- |
+    | GotMouseCapture | Bubble | 마우스가 요소를 잡았습니다. |
+    | LostMouseCapture | Bubble | 마우스가 요소를 놓쳤습니다. |
+    | MouseEnter | Direct | 마우스 포인터가 요소 안으로 들어갔습니다. |
+    | MouseLeave | Direct | 마우스 포인터가 요소 밖으로 나갔습니다. |
+    | (Preview)MouseLeftButtonDown | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 왼쪽 버튼이 눌렸습니다. |
+    | (Preview)MouseLeftButtonUp | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 왼쪽 버튼을 놓았습니다. |
+    | (Preview)MouseRightButtonDown | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 오른쪽 버튼이 눌렸습니다. |
+    | (Preview)MouseRightButtonUp | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 오른쪽 버튼을 놓았습니다. |
+    | (Preview)MouseDown | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 버튼이 눌렸습니다. |
+    | (Preview)MouseUp | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 버튼을 놓았습니다. |
+    | (Preview)MouseMove | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 포인터가 이동했습니다. |
+    | (Preview)MouseWheel | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 휠이 이동했습니다. |
+    | QueryCursor | Bubble | 포인터가 요소 안에 있을 동안 마우스 커서 모양이 결정되었습니다. |
+  - 키보드 입력
+  - 잉크 입력
+ 
+### 커맨드
 
 
 
 
-
-
-
-<!-- Programming WPF 2nd edition 참조... 페이지 132/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 141/867 -->
