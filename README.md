@@ -136,7 +136,7 @@
   - ListBox에서 아이템을 선택한 후 Add 버튼을 누르면 해당 아이템의 Name, Nickname을 상단에 표시합니다.
   - 바인딩하게 되는 요소는 __INotifyPropertyChanged__ 인터페이스를 상속해야 합니다.
   - 바인딩하는 요소들을 담는 컨테이너 객체로는 __ObservableCollection__ 을 사용해야 합니다.
-    ```csharp
+    ```cs
     // 클래스 Nickname
     public class Nickname : INotifyPropertyChanged {
         // INotifyPropertyChanged 멤버
@@ -254,7 +254,7 @@
     </Window>
     ```
   - CS 코드에서도 다음과 같이 정적 리소스를 불러올 수 있습니다.
-    ```xaml
+    ```cs
     public partial class Window1 : Window {
         Nicknames names;
     
@@ -469,10 +469,11 @@
       <Grid>
         <Button Command="ApplicationCommands.Properties" Content="_Properties"/>
       </Grid>
-     </Window>
-
-     // 코드 비하인드
-     public partial class Window1 : Window {
+    </Window>
+    ```
+    ```cs
+    // 코드 비하인드
+    public partial class Window1 : Window {
         public Window1( ) {
             InitializeComponent( );
             InputBinding ib = new InputBinding(ApplicationCommands.Properties, new KeyGesture(Key.Enter, ModifierKeys.Alt));
@@ -495,23 +496,138 @@
   - 내장된 컨트롤들은 대부분 표준 커맨드 오브젝트가 있지만, 경우에 따라서는 직접 구현해야 할 수도 있습니다.
     | 표준 커맨드 클래스 | 커맨드 타입 |
     | --- | --- |
-    | ApplicationCommands | ? |
-    | ComponentCommands | ? |
-    | EditingCommands | ? |
-    | MediaCommands | ? |
-    | NavigationCommands | ? |
+    | ApplicationCommands | 대부분의 모든 애플리케이션에 있는 커맨드. Undo, Redo, 도큐먼트 레벨 동작 (open, close, print) 등 |
+    | ComponentCommands | 정보 안에서의 이동 동작. 스크롤 Up/Down, 끝으로 이동, 텍스트 선택 |
+    | EditingCommands | Bold, Italic, Center, Justify와 같은 텍스트 편집 커맨드. |
+    | MediaCommands | 미디어 재생 동작. Play, Pause, 볼륨 제어, 트랙 선택. |
+    | NavigationCommands | 브라우저 관련 네비게이션 커맨드. Back, Forward, Refresh. |
+  - 커스텀 커맨드 정의하기: Add to Basket 커맨드이며 단축키는 Ctrl + B 또는 Shift + B
+    ```cs
+    ...
+    using System.Windows.Input;
+    namespace MyNamespace {
+        public class MyAppCommands {
+            public static RoutedUICommand AddToBasketCommand;
+            static MyAppCommands() {
+                InputGestureCollection addToBasketInputs = new InputGestureCollection();
+                addToBasketInputs.Add(new KeyGesture(Key.B, ModifierKeys.Control|ModifierKeys.Shift));
+                AddToBasketCommand = new RoutedUICommand("Add to Basket", "AddToBasket", typeof(MyAppCommands), addToBasketInputs);
+            }
+        }
+    }
+    ```
+  - XAML에서 커스텀 커맨드 사용하기: 위에서 정의한 AddToBasket 커맨드를 정의한 후에 사용할 수 있습니다.
+    ```xaml
+    <Window xmlns:m="clr-namespace:MyNamespace;assembly=MyLib" ...>
+        ...
+        <Button Command="m:MyAppCommands.AddToBasketCommand">Add to Basket</Button>
+        ...
+    ```
 
 #### 입력 바인딩
 
+* 자주 호출하는 커맨드의 경우, 입력 바인딩(예: 키보드 단축키)을 제공하는 것이 좋습니다.
+* 현재 제공하는 입력 제스처는 2가지가 있습니다.
+  - MouseGesture: Shift + 왼쪽 클릭과 같은 특정 마우스 입력입니다.
+  - KeyGesture: Alt + Enter와 같은 특정 키보드 입력입니다.
+
 #### Command 소스
+
+* Command 소스는 명령을 호출하는 데 사용된 오브젝트입니다. (UI 요소, 입력 제스처 등)
+  - ICommandSource 인터페이스를 구현해야 함
+    ```cs
+    public interface ICommandSource {
+        ICommand Command { get; }
+        object CommandParameter { get; }
+        IInputElement CommandTarget { get; }
+    }
+    ```
+  - CommandParameter 프로퍼티를 사용하면 다음과 같이 커맨드 호출시 정보 전달이 가능합니다.
+    ```xaml
+    <!-- 이벤트 발생 -->
+    <MenuItem Command="m:MyAppCommands.AddToBasketCommand"
+              CommandParameter="productId4823"
+              Header="Add to basket" />
+    ```
+
+    ```cs
+    // 이벤트 수신
+    void AddToBasketHandler(object sender, ExecutedRoutedEventArgs e) {
+        string productId = (string) e.Parameter;
+        ...
+    }
+    ```
 
 #### Command 타겟
 
+* Command 타겟을 설정하지 않으면 기본적으로 입력 포커스를 가진 요소가 됩니다.
+  - 만약 사용자가 애플리케이션의 다른 곳에 포커스가 있는 상태에서 이벤트의 효과가 의도한 대로 작동되게 하려면 Command 타겟을 명시해야 합니다.
+
 #### Command 바인딩
 
+* 커스텀 커맨드 처리 로직을 구현하려면 CommandBinding 클래스를 구현하면 됩니다.
+  - 다음은 ApplicationCommands.New를 재정의하는 코드입니다.
+    ```cs
+    public partial class Window1 : Window {
+        public Window1( ) {
+            InitializeComponent( );
+            CommandBinding cmdBindingNew = new CommandBinding(ApplicationCommands.New);
+            cmdBindingNew.Executed += NewCommandHandler;
+            CommandBindings.Add(cmdBindingNew);
+        }
+
+        void NewCommandHandler(object sender, ExecutedRoutedEventArgs e) {
+            if (unsavedChanges) {
+                MessageBoxResult result = MessageBox.Show(this, "Save changes to existing document?", "New", MessageBoxButton.YesNoCancel);
+                if (result == MessageBoxResult.Cancel) {
+                    return;
+                }
+                if (result == MessageBoxResult.Yes) {
+                    SaveChanges( );
+                }
+            }
+            // Reset text box contents
+            inputBox.Clear( );
+        }
+        ...
+    }
+    ```
+
+* 커맨드 활성화/비활성화
+  - 다음은 Redo 커맨드를 추가하는 코드입니다.
+    ```cs
+    public Window1() {
+        InitializeComponent();
+        CommandBinding redoCommandBinding = new CommandBinding(ApplicationCommands.Redo);
+        redoCommandBinding.CanExecute += RedoCommandCanExecute;
+        CommandBindings.Add(redoCommandBinding);
+    }
+    void RedoCommandCanExecute(object sender, CanExecuteRoutedEventArgs e) {
+        e.CanExecute = myCustomUndoManager.CanRedo;
+    }
+    ```
+
+* 포커스 범위
+  - 가령 아래와 같이 TextBox가 포커스를 가진 상태에서, 버튼을 누를 때 TextBox에서 이벤트가 발생하게 하려면 포커스 범위를 명시적으로 정의해야 합니다.
+  - FocusManager.IsFocusScope="True" 프로퍼티를 넣으면 작동됩니다. TextBox가 논리적 포커스를 가지고 있다면(최근 포커스를 가지고 있었다면), 그것이 Command 타겟이 됩니다.
+    ```xaml
+    <StackPanel>
+      <StackPanel FocusManager.IsFocusScope="True">
+        <Button Command="ApplicationCommands.Copy"  Content="Copy" />
+        <Button Command="ApplicationCommands.Paste" Content="Paste" />
+      </StackPanel>
+      <TextBox />
+    </StackPanel>
+    ```
+  - 혹은 다음과 같이 Command 타겟을 명시적으로 지정할 수도 있습니다.
+    ```xaml
+    <StackPanel>
+      <Button Command="Copy" Content="Copy" CommandTarget="{Binding ElementName=targetControl}" />
+      <Button Command="Paste" Content="Paste" CommandTarget="{Binding ElementName=targetControl}" />
+      <TextBox x:Name="targetControl" />
+    </StackPanel>
+    ```
 
 
 
-
-
-<!-- Programming WPF 2nd edition 참조... 페이지 150/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 162/867 -->
