@@ -651,15 +651,158 @@
   | TabControl | 여러 개의 탭페이지로 구성되어 있으며 각 탭페이지는 하나의 컨테이너 역할을 함 | - |
   | Menu | 메뉴 바를 표현할 때 사용함 | ContextMenu (Menu와 달리 고정된 것이 아니라 마우스 우클릭할 때 나옴) |
   | ToolBarTray | 여러 개의 툴바 요소를 포함할 수 있으며 각각의 ToolBar는 클릭시 즉각 이벤트를 수행하는 작은 버튼을 포함시킬 수 있음 | - |
-  | GridSplitter | 화면 영역 너비를 조정할 수 있는 스플리터 | ... |
+  | GridSplitter | 화면 영역 너비를 조정할 수 있는 스플리터 | - |
 
 ## 간단한 데이터 바인딩
 
-... Without Data Binding
+* 대부분의 애플리케이션의 목적은 사용자에게 데이터를 보여주고, 그 데이터를 편집할 수 있게 해주는 것입니다.
+  - 애플리케이션 개발자는 이를 위해 데이터를 가공하여 사용자에게 보여주고, 입력한 데이터를 적절하게 처리해야 합니다.
+  - WPF에서 제공하는 데이터 바인딩 엔진을 이용하면 더 적은 코드로 더 많은 기능을 구현할 수 있습니다.
+  - Windows Forms의 경우, 이벤트가 발생하여 데이터가 변경되었을 때 표시된 데이터를 수동으로 업데이트하는 코드를 추가해야 했습니다.
+  - 데이터 바인딩은 인터페이스 __INotifyPropertyChanged__ 를 구현하면 됩니다. PropertyChangedEventHandler 이벤트 핸들러와 Notify 함수가 있기 때문에 데이터와 UI가 자동으로 연동됩니다.
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ...>
+      <Grid>
+        ...
+        <TextBlock ...>Name:</TextBlock>
+        <TextBox Name="nameTextBox" ... />
+        <TextBlock ...>Age:</TextBlock>
+        <TextBox Name="ageTextBox" ... />
+        <Button Name="birthdayButton" ...>Birthday</Button>
+      </Grid>
+    </Window>
+    ```
 
-... Data Binding
+    ```cs
+    using System.ComponentModel; // INotifyPropertyChanged
 
-... Debugging Data Binding
+    public class Person : INotifyPropertyChanged {
+      // INotifyPropertyChanged 멤버를 추가할 것
+      public event PropertyChangedEventHandler PropertyChanged;
+
+      // Notify 함수 포함시킬 것
+      protected void Notify(string propName) {
+        if( this.PropertyChanged != null ) {
+          PropertyChanged(this, new PropertyChangedEventArgs(propName));
+        }
+      }
+      string name;
+      public string Name {
+        get { return this.name; }
+        set {
+          if( this.name == value ) { return; }
+          this.name = value;
+          Notify("Name");  // Name 값이 바뀌었음을 알림
+        }
+      }
+      int age;
+      public int Age {
+        get { return this.age; }
+        set {
+          if(this.age == value ) { return; }
+          this.age = value;
+          Notify("Age");  // Age 값이 바뀌었음을 알림
+        }
+      }
+      public Person() {}
+      public Person(string name, int age) {
+        this.name = name;
+        this.age = age;
+      }
+    }
+
+    public partial class Window1 : Window {
+      Person person = new Person("Tom", 11);
+    
+      public Window1() {
+        InitializeComponent();
+    
+        // Fill initial person fields
+        this.nameTextBox.Text = person.Name;
+        this.ageTextBox.Text = person.Age.ToString();
+
+        // Tom의 프로퍼티 변화를 살펴봄 (데이터 바인딩을 할 경우 이 코드 추가할 것)
+        person.PropertyChanged += person_PropertyChanged;
+    
+        // Handle the birthday button click event
+        this.birthdayButton.Click += birthdayButton_Click;
+      }
+
+      // 데이터 바인딩을 할 경우 이 코드 추가할 것
+      void person_PropertyChanged(object sender, PropertyChangedEventArgs e) {
+        switch(e.PropertyName) {
+          case "Name":
+              this.nameTextBox.Text = person.Name;
+              break;
+          case "Age":
+              this.ageTextBox.Text = person.Age.ToString();
+              break;
+        }
+      }
+    
+      void birthdayButton_Click(object sender, RoutedEventArgs e) {
+        ++person.Age;
+        this.ageTextBox.Text = person.Age.ToString();  // 수동으로 UI 업데이트하려면 이 코드가 추가되어야 함 (데이터 바인딩을 적용하지 않으면 이 코드를 넣을 것)
+        MessageBox.Show(string.Format("Happy Birthday, {0}, age {1}!", person.Name, person.Age), "Birthday");  // 데이터 바인딩이 없으면 메시지 박스에는 Age: 12로 나옵니다. 하지만 여전히 Window1의 Age 값은 11로 나옵니다.
+      }
+    }
+    ```
+
+### 데이터 바인딩
+
+* 바인딩
+  - 단축 바인딩 구문은 다음과 같습니다.
+    ```xaml
+    <TextBox Text="{Binding Path=Age}" />
+    ```
+  - 모든 기능이 포함된 바인딩 구문은 다음과 같습니다.
+    ```xaml
+    <TextBox ... Foreground="{Binding Path=Age, Mode=OneWay, Source={StaticResource Tom}, Converter={StaticResource ageConverter}}" />
+    ```
+  - 바인딩 클래스의 프로퍼티는 다음과 같습니다.
+    | 프로퍼티 | 의미 |
+    | --- | --- |
+    | BindsDirectlyToSource | 기본값은 False. 만약 True로 설정하면 공급자로부터 반환된 데이터 대신 DataSourceProvider의 파라미터에 바인딩한다는 것을 의미합니다. |
+    | Converter | 데이터 소스로부터 값을 양방향으로 변환하는데 사용하는 IValueConverter의 구현체입니다. |
+    | ConverterCulture | 변환 중에 사용할 문화권을 나타내기 위해 IValueConverter 메서드로 전달되는 선택적 파라미터입니다. |
+    | ConverterParameter | 변환 중에 IValueConverter 메서드로 전달되는 선택적 애플리케이션별 파라미터입니다. |
+    | ElementName | 데이터의 소스가 타겟과 마찬가지로 UI일 때 사용합니다. |
+    | FallbackValue | ... |
+    | IsAsync | ... |
+    | Mode | ... |
+    | NotifyOnSourceUpdated | ... |
+    | NotifyOnTargetUpdated | ... |
+    | NotifyOnValidationError | ... |
+    | Path | ... |
+    | RelativeSource | ... |
+    | Source | ... |
+    | UpdateSourceExceptionFilter | ... |
+    | UpdateSourceTrigger | ... |
+    | ValidationRules | ... |
+    | XPath | ... |
+
+* 암묵적 데이터 소스
+
+* 데이터 아일랜드
+
+* 명시적 데이터 소스
+
+* 다른 컨트롤에게 바인딩하기
+
+* 값 변환
+
+* 편집가능한 값 변환
+
+* 검증
+
+* 바인딩 Path 구문
+
+* 상대적 소스
+
+* 소스 트리거 업데이트하기
+
+### 데이터 바인딩 디버깅하기
 
 ## List 데이터에 바인딩하기
 
@@ -813,4 +956,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 191/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 202/867 -->
