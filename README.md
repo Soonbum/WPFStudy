@@ -432,9 +432,86 @@
 
 ### 커맨드
 
+* 커맨드: 여러 입력(마우스, 키보드, 잉크)들의 조합을 통해 사용자가 애플리케이션에게 명령을 요청하기 위한 동작을 의미합니다.
+  - 다음은 XAML에서 정의한 커맨드의 예시입니다. (TextBox의 경우 Cut, Copy, Paste 관련 명령이 내장되어 있으므로 별도의 코드나 이벤트 핸들러가 없어도 됨)
+    ```xaml
+    <DockPanel>
+      <Menu DockPanel.Dock="Top">
+        <MenuItem Header="_Edit">
+          <MenuItem Header="Cu_t" Command="ApplicationCommands.Cut" />
+          <MenuItem Header="_Copy" Command="ApplicationCommands.Copy" />
+          <MenuItem Header="_Paste" Command="ApplicationCommands.Paste" />
+        </MenuItem>
+      </Menu>
+      <ToolBarTray DockPanel.Dock="Top">
+        <ToolBar>
+          <Button Command="Cut" Content="Cut" />
+          <Button Command="Copy" Content="Copy" />
+          <Button Command="Paste" Content="Paste" />
+        </ToolBar>
+      </ToolBarTray>
+      <TextBox />
+    </DockPanel>
+    ```
+  - 커맨드 시스템의 핵심 개념
+    * Command 오브젝트: 특정 커맨드를 식별하는 오브젝트를 의미합니다.
+    * 입력 바인딩: 특정 입력과 커맨드 간의 연관성을 의미합니다. (예: Ctrl-C는 Copy)
+    * Command 소스: 커맨드가 발생한 오브젝트를 의미합니다.
+    * Command 타겟: 커맨드 실행을 요청 받게 되는 UI 요소입니다. (보통 커맨드 발생시 키보드 포커스를 가진 컨트롤)
+    * Command 바인딩: 특정 커맨드를 어떻게 처리해야 할지 알고 있는 특정 UI 요소를 선언하는 것입니다.
+  - 다음은 커맨드 처리 예시입니다.
+    * 이것은 표준 ApplicationCommands.Properties 커맨드 오브젝트를 사용함 (속성 패널 열기)
+    * Button 객체를 클릭하거나 키보드의 Alt + Enter를 누르면 커맨드가 실행됨
+    * 여기서 커맨드 소스는 버튼, 입력 바인딩입니다.
+    ```xaml
+    <!-- XAML -->
+    <Window ...>
+      <Grid>
+        <Button Command="ApplicationCommands.Properties" Content="_Properties"/>
+      </Grid>
+     </Window>
+
+     // 코드 비하인드
+     public partial class Window1 : Window {
+        public Window1( ) {
+            InitializeComponent( );
+            InputBinding ib = new InputBinding(ApplicationCommands.Properties, new KeyGesture(Key.Enter, ModifierKeys.Alt));
+            this.InputBindings.Add(ib);
+            CommandBinding cb = new CommandBinding(ApplicationCommands.Properties);
+            cb.Executed += new ExecutedRoutedEventHandler(cb_Executed);
+            this.CommandBindings.Add(cb);
+        }
+        void cb_Executed(object sender, ExecutedRoutedEventArgs e) {
+            MessageBox.Show("Properties");
+        }
+    }
+    ```
+
+#### Command 오브젝트
+
+* Command 오브젝트: 특정 커맨드를 식별합니다.
+  - 이 자체는 커맨드를 처리하는 방법을 모릅니다. (커맨드 바인딩이 필수)
+  - 예: ApplicationCommands.Properties
+  - 내장된 컨트롤들은 대부분 표준 커맨드 오브젝트가 있지만, 경우에 따라서는 직접 구현해야 할 수도 있습니다.
+    | 표준 커맨드 클래스 | 커맨드 타입 |
+    | --- | --- |
+    | ApplicationCommands | ? |
+    | ComponentCommands | ? |
+    | EditingCommands | ? |
+    | MediaCommands | ? |
+    | NavigationCommands | ? |
+
+#### 입력 바인딩
+
+#### Command 소스
+
+#### Command 타겟
+
+#### Command 바인딩
 
 
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 147/867 -->
+
+<!-- Programming WPF 2nd edition 참조... 페이지 150/867 -->
