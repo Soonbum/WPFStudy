@@ -367,8 +367,8 @@
   - 마우스 입력
     | 이벤트 이름 | 라우팅 | 의미 |
     | --- | --- | --- |
-    | GotMouseCapture | Bubble | 마우스가 요소를 잡았습니다. |
-    | LostMouseCapture | Bubble | 마우스가 요소를 놓쳤습니다. |
+    | GotMouseCapture | Bubble | 요소가 마우스에게 잡혔습니다. |
+    | LostMouseCapture | Bubble | 요소가 마우스로부터 놓였습니다. |
     | MouseEnter | Direct | 마우스 포인터가 요소 안으로 들어갔습니다. |
     | MouseLeave | Direct | 마우스 포인터가 요소 밖으로 나갔습니다. |
     | (Preview)MouseLeftButtonDown | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 왼쪽 버튼이 눌렸습니다. |
@@ -380,12 +380,61 @@
     | (Preview)MouseMove | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 포인터가 이동했습니다. |
     | (Preview)MouseWheel | Tunnel, Bubble | 포인터가 요소 안에 있을 동안 마우스 휠이 이동했습니다. |
     | QueryCursor | Bubble | 포인터가 요소 안에 있을 동안 마우스 커서 모양이 결정되었습니다. |
-  - 키보드 입력
+    * WPF에서는 마우스 입력이 바운딩 박스 기준으로 발생하지 않습니다.
+      - 예를 들어 도넛 모양의 요소와 그 아래에 사각형 모양의 요소가 있다면 클릭 이벤트가 투명한 영역을 스킵할 수 있다는 것입니다.
+        * Fill = Transparent 또는 Opacity = 0인 경우
+      - 반대로 눈에는 보여도 클릭되지 않게 할 수도 있습니다.
+        * IsHitTestVisible = false로 하면 마우스 입력을 받지 않게 됩니다. (3D 컨텐츠에서 마우스 입력 이벤트가 불필요할 경우 이것을 적용하면 성능이 향상될 수 있음)
+    * Mouse 클래스
+      - GetPosition 메서드: 마우스 위치를 알려줌
+      - Capture 메서드: 특정 요소가 마우스에게 잡히면 요소 위에서 포인터가 벗어나도 모든 마우스 입력 이벤트가 해당 요소에게 전달됨 (가령 Drag 중일 때)
+      - Captured 프로퍼티: 어떤 요소가 잡혀 있는지 알 수 있음
+
+  - 키보드 입력: Focus된 요소에 전달될 수 있음
+    | 이벤트 이름 | 라우팅 | 의미 |
+    | --- | --- | --- |
+    | (Preview)GotKeyboardFocus | Tunnel, Bubble | 요소가 키보드 포커스를 받았습니다. |
+    | (Preview)LostKeyboardFocus | Tunnel, Bubble | 요소가 키보드 포커스를 잃었습니다. |
+    | GotFocus | Bubble | 요소가 논리적 포커스를 받았습니다. |
+    | LostFocus | Bubble | 요소가 논리적 포커스를 잃었습니다. |
+    | (Preview)KeyDown | Tunnel, Bubble | 키가 눌렸습니다. |
+    | (Preview)KeyUp | Tunnel, Bubble | 키가 놓였습니다. |
+    | (Preview)TextInput | Tunnel, Bubble | 요소가 텍스트 입력을 받았습니다. |
+    * 논리적 포커스: 애플리케이션이 포커스를 잃어도 논리적 포커스는 유지되며, 애플리케이션이 포커스를 받게 되면 마지막으로 키보드 포커스를 가지고 있었던 요소가 포커스를 받게 됩니다.
+    * Keyboard 클래스
+      - Modifiers 프로퍼티: Alt, Shift, Ctrl 등의 조합 키가 눌린 것을 알 수 있음
+      - IsKeyDown, IsKeyUp 메서드: 개별 키의 상태를 알 수 있음
+      - FocusedElement 프로퍼티: 어떤 요소가 키보드 포커스를 가지고 있는지 알 수 있음
+      - Focus 메서드: 특정 요소에 포커스를 설정할 수 있음
+
   - 잉크 입력
- 
+    | 이벤트 이름 | 라우팅 | 의미 |
+    | --- | --- | --- |
+    | GotStylusCapture | Bubble | 요소가 스타일러스에게 잡혔습니다. |
+    | LostStylusCapture | Bubble | 요소가 스타일러스로부터 놓였습니다. |
+    | (Preview)StylusButtonDown | Tunnel, Bubble | 요소 위에 있는 동안 스타일러스 버튼이 눌렸습니다. |
+    | (Preview)StylusButtonUp | Tunnel, Bubble | 요소 위에 있는 동안 스타일러스 버튼이 놓였습니다. |
+    | (Preview)StylusDown | Tunnel, Bubble | 요소 위에 있는 동안 스타일러스가 스크린을 터치했습니다. |
+    | (Preview)StylusUp | Tunnel, Bubble | 요소 위에 있는 동안 스타일러스가 스크린을 떠났습니다. |
+    | StylusEnter | Direct | 스타일러스가 요소 안으로 이동했습니다. |
+    | StylusLeave | Direct | 스타일러스가 요소를 떠났습니다. |
+    | (Preview)StylusInRange | Tunnel, Bubble | 스타일러스가 감지될 정도로 스크린에 근접했습니다. |
+    | (Preview)StylusOutOfRange | Tunnel, Bubble | 스타일러스가 감지 범위를 벗어났습니다. |
+    | (Preview)StylusMove | Tunnel, Bubble | 요소 위에 있는 동안 스타일러스가 이동했습니다. |
+    | (Preview)StylusInAirMove | Tunnel, Bubble | 요소 위에 있는 동안 스타일러스가 이동했지만 스크린에 접촉한 상태는 아닙니다. |
+    | (Preview)StylusSystemGesture | Tunnel, Bubble | 스타일러스가 제스처를 수행했습니다. |
+    | (Preview)TextInput | Tunnel, Bubble | 요소가 텍스트 입력을 받았습니다. |
+    * Stylus 클래스
+      - Capture 메서드: Mouse.Capture와 같은 역할을 합니다.
+      - Captured 프로퍼티: 어떤 요소가 잡혀 있는지 알 수 있음
+    * InkCanvas 클래스
+      - 자유로운 형태의 잉크 입력을 받습니다. (가령 필기 중인 상태)
+
 ### 커맨드
 
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 141/867 -->
+
+
+<!-- Programming WPF 2nd edition 참조... 페이지 147/867 -->
