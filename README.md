@@ -768,23 +768,90 @@
     | ConverterCulture | 변환 중에 사용할 문화권을 나타내기 위해 IValueConverter 메서드로 전달되는 선택적 파라미터입니다. |
     | ConverterParameter | 변환 중에 IValueConverter 메서드로 전달되는 선택적 애플리케이션별 파라미터입니다. |
     | ElementName | 데이터의 소스가 타겟과 마찬가지로 UI일 때 사용합니다. |
-    | FallbackValue | ... |
-    | IsAsync | ... |
-    | Mode | ... |
-    | NotifyOnSourceUpdated | ... |
-    | NotifyOnTargetUpdated | ... |
-    | NotifyOnValidationError | ... |
-    | Path | ... |
-    | RelativeSource | ... |
-    | Source | ... |
-    | UpdateSourceExceptionFilter | ... |
-    | UpdateSourceTrigger | ... |
-    | ValidationRules | ... |
-    | XPath | ... |
+    | FallbackValue | 데이터 소스에서 값을 가져오는데 실패했거나, 멀티파트 경로 중 일부가 null이거나, 바인딩이 비동기식이고 아직 값을 가져오지 못한 경우 사용할 값입니다. |
+    | IsAsync | 기본값은 False. 만약 True로 설정하면 소스에서 데이터를 비동기식으로 가져와서 get/set합니다. 데이터를 가져오는 동안에는 FallbackValue를 사용합니다. |
+    | Mode | BindingMode 값 중 하나입니다: TwoWay, OneWay, OneTime, OneWayToSource, Default |
+    | NotifyOnSourceUpdated | 기본값은 False. SourceUpdated 이벤트 발생 여부를 의미합니다. |
+    | NotifyOnTargetUpdated | 기본값은 False. TargetUpdated 이벤트 발생 여부를 의미합니다. |
+    | NotifyOnValidationError | 기본값은 False. Validation.Error 부착 이벤트 발생 여부를 의미합니다. |
+    | Path | 데이터 소스 오브젝트의 데이터에 대한 경로입니다. XML 데이터의 XPath 프로퍼티를 사용합니다. |
+    | RelativeSource | 타겟에 대한 상대적인 데이터 소스를 탐색하기 위해 사용합니다. |
+    | Source | 기본 데이터 문맥 (data context) 대신 사용할 데이터 소스에 대한 참조입니다. |
+    | UpdateSourceExceptionFilter | 데이터 소스를 업데이트하는 동안 발생하는 오류를 처리하기 위한 선택적인 델리게이트입니다. ErrorValidationRule이 동반된 경우에만 유효합니다. |
+    | UpdateSourceTrigger | UI 타겟으로부터 데이터 소스가 언제 업데이트될지를 결정합니다. 다음 값 중 하나이어야 합니다: PropertyChanged, LostFocus, Explicit, Default |
+    | ValidationRules | 0개 이상의 ValidationRule 클래스의 파생 클래스입니다. |
+    | XPath | XML 데이터 소스 오브젝트에 있는 데이터의 XPath입니다. 비-XML 데이터의 경우 Path 프로퍼티를 사용하십시오. |
 
 * 암묵적 데이터 소스
+  - 데이터 문맥 (data context): 명시적인 바인딩이 없을 때 데이터 소스를 찾는 장소를 의미합니다. WPF의 경우 모든 FrameworkElement와 FrameworkContentElement가 DataContext 프로퍼티를 가지고 있습니다.
+  - DataContext 프로퍼티는 Object 타입이므로 어떤 것이든 넣을 수 있습니다. (string, Person, List<Person> 등)
+  - 바인딩 객체는 바인딩 소스로 사용할 객체를 찾을 때, 자신이 정의된 위치로부터 트리를 논리적으로 거슬러 올라가면서 설정된 DataContext 프로퍼티를 찾습니다.
+    ```cs
+    // Window1.xaml.cs
+    using System;
+    using System.Windows;
+    using System.Windows.Controls;
+    namespace WithBinding {
+        public partial class Window1 : Window {
+            Person person = new Person("Tom", 11);
+    
+            public Window1( ) {
+    
+                InitializeComponent( );
+    
+                // grid에게 데이터 문맥을 알려줌
+                grid.DataContext = person;
+                this.birthdayButton.Click += birthdayButton_Click;
+            }
+    
+            void birthdayButton_Click(object sender, RoutedEventArgs e) {
+                // 데이터 바인딩으로 인해 person과 TextBox 간에 동기화가 이루어짐
+                ++person.Age;
+                MessageBox.Show(string.Format("Happy Birthday, {0}, age {1}!", person.Name, person.Age), "Birthday");
+            }
+        }
+    }
+    ```
 
 * 데이터 아일랜드
+  - XAML에서 커스텀 타입 인스턴스 생성하기
+    ```xaml
+    <Window ... xmlns:local="clr-namespace:WithBinding">
+      <Window.Resources>
+        <local:Person x:Key="Tom" Name="Tom" Age="11" />
+      </Window.Resources>
+      <Grid>...</Grid>
+    </Window
+    ```
+  - 위 예제에서는 clr-namespace 구문을 사용하여 Window.Resources 안에 데이터 아일랜드를 만들었습니다. 그래서 다음과 같이 코드 비하인드 방식이 아닌 XAML에서 DataContext를 선언적으로 설정할 수 있습니다.
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ... xmlns:local="clr-namespace:WithBinding">
+      <Window.Resources>
+        <local:Person x:Key="Tom" Name="Tom" Age="11" />
+      </Window.Resources>
+      <Grid DataContext="{StaticResource Tom}">
+        ...
+        <TextBlock ...>Name:</TextBlock>
+        <TextBox ... Text="{Binding Path=Name}" />
+        <TextBlock ...>Age:</TextBlock>
+        <TextBox ... Text="{Binding Path=Age}" />
+        <Button ... Name="birthdayButton">Birthday</Button>
+      </Grid>
+    </Window>
+    ```
+  - 다음과 같이 버튼 클릭 이벤트가 발생했을 때 멤버 변수 대신 리소스에 정의된 데이터를 사용하도록 업데이트해야 합니다.
+    ```cs
+    public partial class Window1 : Window {
+        ...
+        void birthdayButton_Click(object sender, RoutedEventArgs e) {
+            // Window의 리소스에서 Person 가져오기
+            Person person = (Person)this.FindResource("Tom");
+            ++person.Age;
+            MessageBox.Show(...);
+        }
+    }
+    ```
 
 * 명시적 데이터 소스
 
@@ -956,4 +1023,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 202/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 207/867 -->
