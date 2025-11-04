@@ -1078,7 +1078,7 @@
     | Path=(OwnerType.AttachedProperty) | 부착된 의존성 프로퍼티에 바인딩합니다. (예. Path=(Validation.HasError)) |
     | Path=Property.SubProperty | 현재 오브젝트의 서브-프로퍼티에 바인딩합니다. (예. Path=Name.Length) |
     | Path=Property[n] | 인덱서에 바인딩합니다. (예. Path=Names[0]) |
-    | Path=Property/Property | 마스터/디테일 바인딩입니다. (예. Path=Customers/Orders) |
+    | Path=Property/Property | Master/Detail 바인딩입니다. (예. Path=Customers/Orders) |
     | Path=(OwnerType.AttachedProperty)[n].SubProperty | 위 구문들의 조합입니다. (예. Path=(Validation.Errors)[0].ErrorContent) |
   - 다음은 툴팁 프로퍼티에 유효성 검사 오류 메시지를 바인딩하는 예제입니다. 이렇게 하면 오류가 해소될 때 툴팁도 비어 있게 됩니다.
     ```xaml
@@ -1132,13 +1132,189 @@
 
 ## List 데이터에 바인딩하기
 
-... Binding to List Data
+### List 데이터에 바인딩하기
 
-... Data Source Providers
+* 바인딩에 있던 예제를 활용해서 설명을 이어가겠습니다.
+  ```cs
+  using System.Collections.Generic; // List<T>
+  ...
+  namespace PersonBinding {
+    public class Person : INotifyPropertyChanged {
+      // INotifyPropertyChanged 멤버
+      public event PropertyChangedEventHandler PropertyChanged;
+      protected void Notify(string propName) {
+        if( this.PropertyChanged != null ) {
+          PropertyChanged(this, new PropertyChangedEventArgs(propName));
+        }
+      }
+      string name;
+      public string Name {
+        get { return this.name; }
+        set {
+          if( this.name == value ) { return; }
+          this.name = value;
+          Notify("Name");
+        }
+      }
+      int age;
+      public int Age {
+        get { return this.age; }
+        set {
+          if(this.age == value ) { return; }
+          this.age = value;
+          Notify("Age");
+        }
+      }
+      public Person( ) {}
+      public Person(string name, int age) {
+        this.name = name;
+        this.age = age;
+      }
+    }
+    // 새로 추가된 부분입니다: Person 오브젝트 리스트를 만들 수 있도록 제네릭 타입에 대한 별명을 생성합니다.
+    class People : List<Person> {}
+    ...
+  }
+  ```
+  ```xaml
+  <!-- Window1.xaml -->
+  <Window ... xmlns:local="clr-namespace:ListBinding">
+    <Window.Resources>
+      <local:People x:Key="Family">
+        <local:Person Name="Tom" Age="11" />
+        <local:Person Name="John" Age="12" />
+        <local:Person Name="Melissa" Age="38" />
+      </local:People>
+      <local:AgeToForegroundConverter x:Key="ageConverter" />
+    </Window.Resources>
+    <Grid DataContext="{StaticResource Family}">
+      ...
+      <TextBlock ...>Name:</TextBlock>
+      <TextBox Text="{Binding Path=Name}" ... />
+      <TextBox
+        Text="{Binding Path=Age}" Foreground="{Binding Path=Age, Converter=...}" ... />
+      <Button ...>Birthday</Button>
+    </Grid>
+  </Window>
+  ```
 
-... Master-Detail Binding
+* 현재 아이템 가져오기
+  - XAML에서 선언된 커스텀 오브젝트를 가져오는 방법은 다음과 같습니다.
+    ```cs
+    public partial class Window1 : Window {
+      ...
+      void birthdayButton_Click(object sender, RoutedEventArgs e) {
+        Person person = (Person)this.FindResource("Tom"));
+        ++person.Age;
+        MessageBox.Show(...);
+      }
+    }
+    ```
+  - 컬렉션 뷰에 대한 예제입니다. 컬렉션 뷰는 컬렉션에 대한 정렬, 필터링, 그룹화 등의 서비스를 제공하며 여기서는 현재 아이템을 가져오는 방법을 보여줍니다.
+    ```cs
+    public partial class Window1 : Window {
+      ...
+      void birthdayButton_Click(object sender, RoutedEventArgs e) {
+        // 컬렉션 뷰에서 현재 person 가져옴
+        People people = (People)this.FindResource("Family");
+        ICollectionView view = CollectionViewSource.GetDefaultView(people);
+        Person person = (Person)view.CurrentItem;
+        ++person.Age;
+        MessageBox.Show(...);
+      }
+    }
+    ```
+  - 다음은 현재 아이템을 기준으로 리스트 내 다른 아이템으로 탐색할 수 있는 이벤트 함수를 보여줍니다.
+    ```cs
+    public partial class Window1 : Window {
+      ...
+      ICollectionView GetFamilyView() {
+        People people = (People)this.FindResource("Family");
+        return CollectionViewSource.GetDefaultView(people);
+      }
+    
+      void birthdayButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        Person person = (Person)view.CurrentItem;
+        ++person.Age;
+        MessageBox.Show(...);
+      }
+    
+      void backButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        view.MoveCurrentToPrevious();
+        if( view.IsCurrentBeforeFirst ) {
+          view.MoveCurrentToFirst();  // 처음으로 이동
+        }
+      }
 
-... Hierarchical Binding
+      void forwardButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        view.MoveCurrentToNext();
+        if( view.IsCurrentAfterLast ) {
+          view.MoveCurrentToLast();  // 마지막으로 이동
+        }
+      }
+    }
+    ```
+
+* List 데이터 타겟
+  - 다음은 ListBox 컨트롤을 이용하여 List 데이터를 한꺼번에 보여주는 예제입니다. (IsSynchronizedWithCurrentItem="True": 현재 아이템을 선택하면 현재 아이템에 대한 선택이 활성화됨, 아직은 ListBox 컨트롤에 Name과 Age 속성이 제대로 나타나지 않습니다)
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ... xmlns:local="clr-namespace:ListBinding2">
+      <Window.Resources>
+        <local:People x:Key="Family">...</local:People>
+        ...
+      </Window.Resources>
+      <Grid DataContext="{StaticResource Family}">
+        ...
+        <ListBox
+          ItemsSource="{Binding}"
+          IsSynchronizedWithCurrentItem="True" ... />
+        <TextBlock ...>Name:</TextBlock>
+        <TextBox Text="{Binding Path=Name}" ... />
+        ...
+    </Window>    
+    ```
+
+* 디스플레이 멤버, 값 멤버, 바인딩 탐색
+  - 만약 ItemsControl 파생 컨트롤(Menu, ListBox, ListView, ComboBox, TreeView 클래스 등)에서 프로퍼티 중 하나만 보여주고 싶으면 DisplayMemberPath 프로퍼티를 사용하십시오.
+    ```xaml
+    <ListBox ... ItemsSource="{Binding}" DisplayMemberPath="Name" />
+    ```
+  - 이외에도 ItemsControl 클래스는 데이터 항목의 선택한 값을 표시하는 경로를 제공합니다. SelectedValue 프로퍼티는 표시되는 것과 (실제) 데이터를 분리하기 위해 사용됩니다.
+    ```xaml
+     <ListBox ... Name="lb" ItemsSource="{Binding}" DisplayMemberPath="Name" SelectedValuePath="Age" />
+    ```
+    ```cs
+    void lb_MouseDoubleClick(object sender, MouseButtonEventArgs e) {
+      int index = lb.SelectedIndex;
+      if( index < 0 ) { return; }
+
+      Person item = (Person)lb.SelectedItem;
+      int value = (int)lb.SelectedValue; // Age
+
+      // Do something profitable with this data
+      ...
+    }
+    ```
+
+* 데이터 템플릿
+
+...
+
+### 데이터 소스 공급자
+
+...
+
+### Master-Detail 바인딩
+
+...
+
+### 계층적 바인딩
+
+...
 
 ## 스타일
 
@@ -1282,4 +1458,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 223/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 233/867 -->
