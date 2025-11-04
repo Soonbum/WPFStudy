@@ -854,14 +854,113 @@
     ```
 
 * 명시적 데이터 소스
+  - 일단 이름이 있는 데이터 소스를 확보하면 트리의 어딘가에 설정된 DataContext 프로퍼티에 암시적으로 바인딩하는 것에 의존하는 대신 XAML에서 바인딩 소스를 명시적으로 지정할 수 있습니다. (Source 프로퍼티)
+  - 다음은 2개의 TextBox가 2개의 Person 오브젝트에 각각 바인딩을 한 예제입니다.
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ...>
+      <Window.Resources>
+        <local:Person x:Key="Tom" ... />
+        <local:Person x:Key="John" ... />
+      </Window.Resources>
+      <Grid>
+        ...
+        <TextBox Name="tomTextBox" Text="{Binding Path=Name, Source={StaticResource Tom}}" />
+        <TextBox Name="johnTextBox" Text="{Binding Path=Name, Source={StaticResource John}}" />
+        ...
+      </Grid>
+    </Window>
+    ```
 
 * 다른 컨트롤에게 바인딩하기
+  - 컨트롤끼리도 서로 바인딩하는 것이 가능합니다.
+    ```xaml
+    <TextBox Name="ageTextBox" Foreground="Red" ... />
+    <!-- 버튼과 age TextBox 전경 브러시가 동기화됨 -->
+
+    <Button ...
+      Foreground="{Binding Path=Foreground, ElementName=ageTextBox}">Birthday</Button>
+    ```
 
 * 값 변환
+  - 바인딩한 값의 타입이 호환되지 않는 경우 값 변환이 필요합니다. 아래의 경우 Foreground(Brush)와 Age(Int32)가 바인딩 되어 있습니다.
+    ```xaml
+    <!-- Window1.xaml -->
+     <Window ...>
+      <Grid>
+        ...
+        <TextBox
+          Text="{Binding Path=Age}"
+          Foreground="{Binding Path=Age, ...}"
+          ...
+        />
+        ...
+      </Grid>
+    </Window>
+    ```
+  - 값 변환기는 IValueConverter 인터페이스 구현이며 __Convert__, __ConvertBack__ 메서드를 포함합니다.
+    ```cs
+    [ValueConversion(/*sourceType*/ typeof(int), /*targetType*/ typeof(Brush))]
+    public class AgeToForegroundConverter : IValueConverter {
+      // 변환: Source(Age : Int32) -> Target UI(Foreground : Brush)
+      public object Convert(object value, Type targetType, ...) {
+        if( targetType != typeof(Brush) ) { return null; }
+        int age = int.Parse(value.ToString());
+        return (age > 25 ? Brushes.Red : Brushes.Black);
+      }
+
+      // 역변환: Target UI(Foreground : Brush) -> Source(Age : Int32)
+      public object ConvertBack(object value, Type targetType, ...) {
+        // 여기서는 호출되어서는 안 됨
+        throw new NotImplementedException();
+      }
+    }
+    ```
+  - 이제 다음과 같이 값 변환기를 붙일 수 있습니다.
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ... xmlns:local="clr-namespace:WithBinding">
+      <Window.Resources>
+        <local:Person x:Key="Tom" ... />
+        <local:AgeToForegroundConverter x:Key="ageConverter" />
+      </Window.Resources>
+      <Grid DataContext="{StaticResource Tom}">
+        ...
+        <TextBox
+          Text="{Binding Path=Age}"
+          Foreground="{Binding Path=Age,
+          Converter={StaticResource ageConverter}}"
+          ... />
+        ...
+      <Button ...
+        Foreground="{Binding Path=Foreground, ElementName=ageTextBox}">Birthday</Button>
+      </Grid>
+    </Window>
+    ```
+  - 위에서 이상한 점을 느끼지 못하셨나요? TextBox.Text가 Int32 타입인 Age와 바인딩 되었는데 자동으로 타입이 변환되고 있습니다. 이는 Binding 클래스가 TypeConverter를 지원하기 때문에 가능한 것입니다.
 
 * 편집가능한 값 변환
+  - 다음은 Int32와 10진수 표현의 String 간의 변환하는 변환기입니다. (단, 16진수로 해석될 수 없는 문자열을 입력하면 예외가 발생하기 때문에 유효성 검사가 필요합니다)
+    ```cs
+    public class Base16Converter : IValueConverter {
+      public object Convert(object value, Type targetType, ...) {
+        // 10진수 : Int32 -> 16진수 : String
+        return ((int)value).ToString("x");
+      }
+      public object ConvertBack(object value, Type targetType, ...) {
+        // 16진수 : String -> 10진수 : Int32
+        return int.Parse((string)value, System.Globalization.NumberStyles.HexNumber);
+      }
+    }
+    ```
+    ```xaml
+    <TextBox ...
+      Text="{Binding
+              Path=Age,
+              Converter={StaticResource base16Converter}}" />
+    ```
 
-* 검증
+* 유효성 검사 (Validation)
 
 * 바인딩 Path 구문
 
@@ -1023,4 +1122,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 207/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 212/867 -->
