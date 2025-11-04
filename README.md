@@ -961,6 +961,114 @@
     ```
 
 * 유효성 검사 (Validation)
+  - 다음은 ExceptionValidationRule이라는 내장 유효성 검사 규칙을 적용하여 Age-to-Foreground 값 변환기가 지원하는 범위를 벗어나는 데이터를 사용자가 입력하는 것에 대해 어느 정도 보호합니다. (만약 Age 값이 유효하지 않으면 하이라이트됨)
+    ```xaml
+    <Window ... xmlns:local="clr-namespace:WithBinding">
+      <Window.Resources>
+        ...
+        <local:AgeToForegroundConverter x:Key="ageConverter" />
+      </Window.Resources>
+    ...
+    <TextBox ...
+      Foreground="
+        {Binding
+          Path=Age,
+          Converter={StaticResource ageConverter}}">
+
+      <TextBox.Text>
+        <Binding Path="Age">
+          <Binding.ValidationRules>
+            <ExceptionValidationRule />
+          </Binding.ValidationRules>
+        </Binding>
+      </TextBox.Text>
+    </TextBox>
+    ```
+  - 다음은 유효성 검사 결과가 유효하지 않을 경우 오류 메시지를 표시합니다. Binding.NotifyOnValidationError = "True"이어야 합니다.
+    ```cs
+    // Window1.cs
+    ...
+    public Window1() {
+      InitializeComponent();
+      this.birthdayButton.Click += birthdayButton_Click;
+      // age TextBox에 Validation Error 이벤트가 발생하는지 여부를 리스닝
+      Validation.AddErrorHandler(this.ageTextBox, ageTextBox_ValidationError);
+    }
+    
+    void ageTextBox_ValidationError(object sender, ValidationErrorEventArgs e) {
+      // ExceptionValidationRule에 의해 발생한 예외 문자열을 보여줌
+      MessageBox.Show((string)e.Error.ErrorContent, "Validation Error");
+    }
+    ...
+    ```
+    ```xaml
+    <!-- Window1.xaml -->
+    ...
+    <TextBox Name="ageTextBox" ...>
+      <TextBox.Text>
+        <Binding Path="Age" NotifyOnValidationError="True">
+          <Binding.ValidationRules>
+            <ExceptionValidationRule />
+          </Binding.ValidationRules>
+        </Binding>
+      </TextBox.Text>
+    </TextBox>
+    ...
+    ```
+
+* 커스텀 유효성 검사 규칙
+  - ValidationRule 클래스를 상속해서 Validate 메서드를 재정의(override)하면 커스텀 유효성 검사 규칙을 만들 수 있습니다.
+    ```cs
+    public class NumberRangeRule : ValidationRule {
+      int min;
+      public int Min {
+        get { return min; }
+        set { min = value; }
+      }
+      int max;
+      public int Max {
+        get { return max; }
+        set { max = value; }
+      }
+
+      public override ValidationResult Validate(
+        object value, System.Globalization.CultureInfo cultureInfo) {
+        int number;
+        // int로 파싱 실패시
+        if( !int.TryParse((string)value, out number) ) {
+          return new ValidationResult(false, "Invalid number format");
+        }
+        // 값 범위 초과시
+        if( number < min || number > max ) {
+          return new ValidationResult(false, string.Format("Number out of range ({0}-{1})", min, max));
+        }
+        //return new ValidationResult(true, null); // valid result
+        return ValidationResult.ValidResult; // static valid result to save on garbage
+      }
+    }
+    ```
+    ```xaml
+    <TextBox ...
+      Foreground="
+        {Binding
+          Path=Age,
+          Converter={StaticResource ageConverter}}">
+      <TextBox.Text>
+        <Binding Path="Age">
+          <Binding.ValidationRules>
+            <local:NumberRangeRule Min="0" Max="128" />
+          </Binding.ValidationRules>
+        </Binding>
+      </TextBox.Text>
+    </TextBox>
+    ```
+  - 만약 메시지 박스 대신 툴팁을 넣고 싶다면 다음과 같이 처리할 수도 있습니다. (다만 툴팁에서 오류 메시지를 지울 수 있게 하는 ValidationSuccess 이벤트는 없습니다)
+    ```cs
+    void ageTextBox_ValidationError(object sender, ValidationErrorEventArgs e) {
+      // NumberRangeRule.Validate에 생성된 문자열을 보여줌
+      ageTextBox.ToolTip = (string)e.Error.ErrorContent;
+    }
+    ```
 
 * 바인딩 Path 구문
 
@@ -1122,4 +1230,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 212/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 218/867 -->
