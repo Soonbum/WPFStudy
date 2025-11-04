@@ -1071,12 +1071,64 @@
     ```
 
 * 바인딩 Path 구문
+  - 바인딩의 Path에 할당하는 값의 형태는 다음과 같이 다양하게 존재합니다.
+    | 구문 | 의미 |
+    | --- | --- |
+    | Path=Property | 현재 오브젝트의 프로퍼티에 바인딩합니다. 프로퍼티는 CLR 프로퍼티이거나 의존성 프로퍼티, 부착된 프로퍼티일 수 있습니다. (예. Path=Age) |
+    | Path=(OwnerType.AttachedProperty) | 부착된 의존성 프로퍼티에 바인딩합니다. (예. Path=(Validation.HasError)) |
+    | Path=Property.SubProperty | 현재 오브젝트의 서브-프로퍼티에 바인딩합니다. (예. Path=Name.Length) |
+    | Path=Property[n] | 인덱서에 바인딩합니다. (예. Path=Names[0]) |
+    | Path=Property/Property | 마스터/디테일 바인딩입니다. (예. Path=Customers/Orders) |
+    | Path=(OwnerType.AttachedProperty)[n].SubProperty | 위 구문들의 조합입니다. (예. Path=(Validation.Errors)[0].ErrorContent) |
+  - 다음은 툴팁 프로퍼티에 유효성 검사 오류 메시지를 바인딩하는 예제입니다. 이렇게 하면 오류가 해소될 때 툴팁도 비어 있게 됩니다.
+    ```xaml
+    <TextBox
+      Name="ageTextBox" ...
+      ToolTip="{Binding
+                 ElementName=ageTextBox,
+                 Path=(Validation.Errors)[0].ErrorContent}">
+      <TextBox.Text>
+        <Binding Path="Age">
+          <!-- NotifyOnValidationError="true"를 넣을 필요 없음 -->
+          <Binding.ValidationRules>
+            <local:NumberRangeRule Min="0" Max="128" />
+          </Binding.ValidationRules>
+        </Binding>
+      </TextBox.Text>
+    </TextBox>
+    ```
 
 * 상대적 소스
+  - Source를 지정할 때 자신을 기준으로 요소를 지정할 때 RelativeSource 프로퍼티를 이용할 수 있습니다. (Self, FindAncestor, Previous, TemplatedParent 등이 있음)
+    ```xaml
+    <TextBox ...
+      ToolTip="{Binding RelativeSource={RelativeSource Self},
+                        Path=(Validation.Errors)[0].ErrorContent}">
+    ```
 
-* 소스 트리거 업데이트하기
-
-### 데이터 바인딩 디버깅하기
+* 업데이트 소스 트리거
+  - 위의 경우 TextBox가 포커스를 잃을 때 데이터 업데이트가 발생합니다.
+  - 만약 컨트롤 상태가 변경되는 즉시 유효성 검사가 일어나게 하려면 Binding 오브젝트의 UpdateSourceTrigger 프로퍼티를 변경하면 됩니다.
+    ```cs
+    namespace System.Windows.Data {
+      public enum UpdateSourceTrigger {
+        Default = 0, // 타켓 컨트롤을 기반으로 "자연스럽게" 업데이트함 (예: TextBox의 경우 LostFocus)
+        PropertyChanged = 1, // 즉시 소스를 업데이트함
+        LostFocus = 2, // 포커스가 변경될 때 소스를 업데이트함
+        Explicit = 3, // 반드시 BindingExpression.UpdateSource()를 호출해야 함
+      }
+    }
+    ```
+  - 다음과 같이 업데이트 소스 트리거를 변경할 수 있습니다. (LostFocus를 PropertyChanged로 변경함)
+    ```xaml
+    <TextBox ...>
+      <TextBox.Text>
+        <Binding Path="Age" UpdateSourceTrigger="PropertyChanged">
+          ...
+        </Binding>
+      </TextBox.Text>
+    </TextBox>
+    ```
 
 ## List 데이터에 바인딩하기
 
@@ -1230,4 +1282,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 218/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 223/867 -->
