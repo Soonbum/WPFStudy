@@ -1592,6 +1592,69 @@
   - 간접 참조를 위해 데이터 소스 공급자를 사용합니다.
   - WPF에서는 DataSourceProvider 베이스 클래스로부터 파생된 2가지 데이터 소스 공급자를 제공합니다: ObjectDataProvider, XmlDataProvider.
 
+* 오브젝트 데이터 공급자
+  - 다음은 People 컬렉션을 로드한 후에 렌더링하도록 하는 코드입니다.
+    ```cs
+    ...
+    public class Person : INotifyPropertyChanged {...}
+    public class People : ObservableCollection<Person> {}
+    public class RemotePeopleLoader {
+      // ObjectDataProvider will expose results for binding
+      public People LoadPeople() {
+        // Load people from afar
+        People people = new People();
+        ...
+        return people;
+      }
+    }
+    ...
+    ```
+    ```xaml
+    <Window.Resources>
+      ...
+      <ObjectDataProvider
+        x:Key="Family"
+        ObjectType="{x:Type local:RemotePeopleLoader}"
+        MethodName="LoadPeople" />
+    </Window.Resources>
+    <Grid DataContext="{StaticResource Family}">
+      ...
+      <ListBox ItemsSource="{Binding}" .../>
+    </Grid>
+    ```
+  - 이제 오브젝트 데이터 공급자가 데이터와 바인딩 사이의 중개자 역할을 하므로 거기서 데이터를 가져와야 합니다.
+    ```cs
+    public partial class Window1 : Window {
+      ...
+      ICollectionView GetFamilyView() {
+        DataSourceProvider provider =
+          (DataSourceProvider)this.FindResource("Family");
+        People people = (People)provider.Data;
+        return CollectionViewSource.GetDefaultView(people);
+      }
+    
+      void birthdayButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        Person person = (Person)view.CurrentItem;
+        ++person.Age;
+        MessageBox.Show(...);
+      }
+
+      void addButton_Click(object sender, RoutedEventArgs e) {
+        DataSourceProvider provider = (DataSourceProvider)this.FindResource("Family");
+        People people = (People)provider.Data;
+        people.Add(new Person("Chris", 37));
+      }
+      ...
+    }
+    ```
+
+* 비동기식 데이터 수신
+
+...
+
+* 파라미터 전달
+
 ...
 
 ### Master-Detail 바인딩
@@ -1744,4 +1807,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 252/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 254/867 -->
