@@ -1301,8 +1301,289 @@
     ```
 
 * 데이터 템플릿
+  - ItemsControl 컨트롤에서 데이터를 다양한 형태로 보여주고 싶으면 데이터 템플릿을 사용하면 됩니다.
+  - 아래 예제는 ListBox의 ItemTemplate 요소 내부에 DateTemplate을 생성하는 방식으로 ListBox 아이템에 대한 데이터 템플릿을 명시적으로 설정했습니다.
+    ```xaml
+    <ListBox ... ItemsSource="{Binding}">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <TextBlock>
+            <TextBlock Text="{Binding Path=Name}" />
+            (age: <TextBlock
+              Text="{Binding Path=Age}"
+              Foreground="{Binding
+                            Path=Age,
+                            Converter={StaticResource ageConverter}}" />)
+          </TextBlock>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    ```
+  - 만약 객체가 어디에 표시되든 상관없이 특정 템플릿을 갖게 하고 싶으면, 다음과 같이 타입 지정 데이터 템플릿을 사용하면 됩니다.
+    ```xaml
+    <Window.Resources>
+      <local:People x:Key="Family">...</local:People>
+      ...
+      <DataTemplate DataType="{x:Type local:Person}">
+        <TextBlock>
+          <TextBlock Text="{Binding Path=Name}" />
+          (age: <TextBlock Text="{Binding Path=Age}" ... />)
+        </TextBlock>
+      </DataTemplate>
+      ...
+     </Window.Resources>
+     ...
+     <!-- ItemTemplate 설정 불필요함 -->
+    <ListBox ItemsSource="{Binding}" ... />
+    ```
 
-...
+* 리스트 변경
+  - 다음은 Add 버튼에 의한 리스트 변경을 보여줍니다.
+    ```cs
+    public partial class Window1 : Window {
+      ...
+      void addButton_Click(object sender, RoutedEventArgs e) {
+        People people = (People)this.FindResource("Family");
+        people.Add(new Person("Chris", 37));
+      }
+    }
+    ```
+  - 이때, ListBox에 새로운 것이 추가되었음을 알아차리기 위해 데이터 바인딩된 객체가 INotifyPropertyChanged 인터페이스를 구현한 것처럼 데이터 바인딩된 리스트는 INotifyCollectionChanged 인터페이스를 구현해야 합니다.
+    ```cs
+    namespace System.Collections.Specialized {
+      public interface INotifyCollectionChanged {
+        event NotifyCollectionChangedEventHandler CollectionChanged;
+      }
+    }
+    ```
+  - 다음은 INotifyCollectionChanged 인터페이스가 구현된 컬렉션이며 일반적인 List<T>보다 ObservableCollection<T>를 사용하는 것을 권장합니다.
+    ```cs
+    namespace System.Collections.ObjectModel {
+      public class ObservableCollection<T> :
+        Collection<T>, INotifyCollectionChanged, INotifyPropertyChanged {
+        ...
+      }
+    }
+    ```
+    ```cs
+    using System.ComponentModel; // INotifyPropertyChanged
+    using System.Collections.ObjectModel; // ObservableCollection<T>
+    ...
+    class Person : INotifyPropertyChanged {...}
+    class People : ObservableCollection<Person> {}
+    ...
+    ```
+
+* 리스트 정렬
+  - 다음과 같이 뷰는 데이터가 표시되는 순서를 변경할 수 있습니다.
+    ```cs
+    public partial class Window1 : Window {
+      ...
+      ICollectionView GetFamilyView() {
+        People people = (People)this.FindResource("Family");
+        return CollectionViewSource.GetDefaultView(people);
+      }
+
+      // 정렬이 안 되어 있으면, 1차로 Name 기준으로 오름차순 정렬, 2차로 Age 기준으로 내림차순 정렬
+      // 정렬이 되어 있을 때, 다시 정렬 버튼을 누르면 원래 상태대로 돌아옴
+      void sortButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        if( view.SortDescriptions.Count == 0 ) {
+          view.SortDescriptions.Add(new SortDescription("Name", ListSortDirection.Ascending));
+          view.SortDescriptions.Add(new SortDescription("Age", ListSortDirection.Descending));
+        }
+        else {
+          view.SortDescriptions.Clear();
+        }
+      }
+    }
+    ```
+  - 커스텀 정렬
+    ```cs
+    class PersonSorter : IComparer {
+      public int Compare(object x, object y) {
+        Person lhs = (Person)x;
+        Person rhs = (Person)y;
+        // Name 오름차순, Age 내림차순 정렬
+        int nameCompare = lhs.Name.CompareTo(rhs.Name);
+        if( nameCompare != 0 ) return nameCompare;
+        return rhs.Age - lhs.Age;
+      }
+    }
+
+    public partial class Window1 : Window {
+      ...
+      ICollectionView GetFamilyView() {
+        People people = (People)this.FindResource("Family");
+        return CollectionViewSource.GetDefaultView(people);
+      }
+      void sortButton_Click(object sender, RoutedEventArgs e) {
+        ListCollectionView view = (ListCollectionView)GetFamilyView();
+        if( view.CustomSort == null ) {
+          view.CustomSort = new PersonSorter();
+        }
+        else {
+          view.CustomSort = null;
+        }
+      }
+    }
+    ```
+
+*  기본 컬렉션 뷰
+  - 각 컬렉션 데이터 타입에 대한 기본 뷰
+    | 컬렉션 데이터 | 기본 뷰 |
+    | --- | --- |
+    | IEnumerable | CollectionView |
+    | IList | ListCollectionView |
+    | IBindingList | BindingListCollectionView |
+
+* 리스트 필터링
+  - 다음과 같이 Fileter 프로퍼티를 이용해서 조건에 따라 원하는 것만 리스트에 표시하게 할 수 있습니다.
+    ```cs
+    public partial class Window1 : Window {
+      ...
+      ICollectionView GetFamilyView() {
+        People people = (People)this.FindResource("Family");
+        return CollectionViewSource.GetDefaultView(people);
+      }
+
+      void filterButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        if( view.Filter == null ) {
+           view.Filter = delegate(object item) {
+            // 25 이상만 보여줌
+            return ((Person)item).Age >= 25;
+          };
+        }
+        else {
+          view.Filter = null;
+        }
+      }
+    }
+    ```
+
+* 리스트 그룹화
+  - 그룹화를 설정하려면 (1) 뷰의 GroupDescriptions 컬렉션을 조작하여 그룹을 설정해야 하고, (2) PropertyGroupDescription 오브젝트는 그룹화에 사용하고 싶은 프로퍼티의 이름을 받아야 합니다.
+    ```cs
+    public partial class Window1 : Window {
+      ...
+      ICollectionView GetFamilyView() {
+        People people = (People)this.FindResource("Family");
+        return CollectionViewSource.GetDefaultView(people);
+      }
+
+      void groupButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        if( view.GroupDescriptions.Count == 0 ) {
+          // 나이 기준으로 그룹화
+          view.GroupDescriptions.Add(new PropertyGroupDescription("Age"));
+        }
+        else {
+          view.GroupDescriptions.Clear();
+        }
+      }
+    }
+    ```
+  - 그룹 스타일: 컨테이너의 실제 스타일, 헤더의 데이터 템플릿, 빈 그룹을 숨길지 여부 등 그룹 시각화 관련 정보 등을 담고 있음
+    ```xaml
+    <ListBox ... ItemsSource="{Binding}" >
+      <ListBox.GroupStyle>
+        <x:Static Member="GroupStyle.Default" />
+      </ListBox.GroupStyle>
+    </ListBox>
+    ```
+  - 커스텀 그룹 스타일 (이렇게 하면 그룹의 배경은 Black, 글자는 White에 Bold 스타일로 나오고, 그룹 내 아이템 개수가 표시됨)
+    ```xaml
+    <ListBox ... ItemsSource="{Binding}">
+      <ListBox.GroupStyle>
+        <GroupStyle>
+          <GroupStyle.HeaderTemplate>
+            <DataTemplate>
+              <TextBlock
+                Background="Black" Foreground="White" FontWeight="Bold">
+                <TextBlock Text="{Binding Name}" />
+                (<TextBlock Text="{Binding ItemCount}" />)
+              </TextBlock>
+            </DataTemplate>
+          </GroupStyle.HeaderTemplate>
+        </GroupStyle>
+      </ListBox.GroupStyle>
+    </ListBox>
+    ```
+  - 커스텀 값 변환기를 이용해서 그룹화 기준을 변경할 수 있습니다. (다음의 경우 25세 미만인지 아닌지 여부로 그룹을 나눔)
+    ```cs
+    public class AgeToRangeConverter : IValueConverter {
+      public object Convert(object value, Type targetType, ...) {
+        return (int)value < 25 ? "Under the Hill" : "Over the Hill";
+      }
+      public object ConvertBack(object value, Type targetType, ...) {
+        // 여기서는 호출되어서는 안 됨
+        throw new NotImplementedException();
+      }
+    }
+
+    void groupButton_Click(object sender, RoutedEventArgs e) {
+      ICollectionView view = GetFamilyView();
+      if( view.GroupDescriptions.Count == 0 ) {
+        // 범위 기준으로 그룹화
+        view.GroupDescriptions.Add(new PropertyGroupDescription("Age", new AgeToRangeConverter()));
+      }
+      else {
+        view.GroupDescriptions.Clear();
+      }
+    }
+    ```
+  - 여러 PropertyGroupDescription을 넣어서 여러 수준으로 그룹화할 수 있습니다.
+    ```cs
+    void groupButton_Click(object sender, RoutedEventArgs e) {
+      ICollectionView view = GetFamilyView();
+      if( view.GroupDescriptions.Count == 0 ) {
+        // 범위, 그 다음에 나이 기준으로 그룹화
+        view.GroupDescriptions.Add(new PropertyGroupDescription("Age", new AgeToRangeConverter()));
+        view.GroupDescriptions.Add(new PropertyGroupDescription("Age"));
+      }
+      else {
+        view.GroupDescriptions.Clear();
+      }
+    }
+    ```
+  - 코드 비하인드 방식이 아닌 XAML에서의 선언적인 방식으로 정렬/그룹화할 수도 있습니다. (다만 이 방식은 커스텀 방식 정렬을 지원하지 않으며 필터링도 불가능함)
+    ```xaml
+    <Window ...
+      xmlns:local="clr-namespace:CollectionViewSourceBinding"
+      xmlns:compModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+      xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework">
+      <Window.Resources>
+        <local:People x:Key="Family">
+          <local:Person Name="Tom" Age="11" />
+          <local:Person Name="John" Age="12" />
+          <local:Person Name="Melissa" Age="38" />
+          <local:Person Name="Penny" Age="38" />
+        </local:People>
+        <local:AgeToRangeConverter x:Key="ageConverter" />
+        <CollectionViewSource x:Key="SortedGroupedFamily"
+                              Source="{StaticResource Family}">
+          <CollectionViewSource.SortDescriptions>
+            <compModel:SortDescription PropertyName="Name" Direction="Ascending" />
+            <compModel:SortDescription PropertyName="Age" Direction="Descending" />
+          </CollectionViewSource.SortDescriptions>
+          <CollectionViewSource.GroupDescriptions>
+            <data:PropertyGroupDescription PropertyName="Age" Converter="{StaticResource ageConverter}" />
+            <data:PropertyGroupDescription PropertyName="Age" />
+          </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
+      </Window.Resources>
+      <Grid>
+        <ListBox
+          ItemsSource="{Binding Source={StaticResource SortedGroupedFamily}}"
+          DisplayMemberPath="Name">
+          <ListBox.GroupStyle>
+            <x:Static Member="GroupStyle.Default" />
+          </ListBox.GroupStyle>
+        </ListBox>
+      </Grid>
+    </Window>
+    ```
 
 ### 데이터 소스 공급자
 
@@ -1458,4 +1739,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 233/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 243/867 -->
