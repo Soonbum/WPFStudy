@@ -1547,7 +1547,7 @@
       }
     }
     ```
-  - 코드 비하인드 방식이 아닌 XAML에서의 선언적인 방식으로 정렬/그룹화할 수도 있습니다. (다만 이 방식은 커스텀 방식 정렬을 지원하지 않으며 필터링도 불가능함)
+  - 코드 비하인드 방식이 아닌 XAML에서의 선언적인 방식으로 정렬/그룹화할 수도 있습니다. (CollectionViewSource 태그, 다만 이 방식은 커스텀 방식 정렬을 지원하지 않으며 필터링도 불가능함)
     ```xaml
     <Window ...
       xmlns:local="clr-namespace:CollectionViewSourceBinding"
@@ -1593,7 +1593,7 @@
   - WPF에서는 DataSourceProvider 베이스 클래스로부터 파생된 2가지 데이터 소스 공급자를 제공합니다: ObjectDataProvider, XmlDataProvider.
 
 * 오브젝트 데이터 공급자
-  - 다음은 People 컬렉션을 로드한 후에 렌더링하도록 하는 코드입니다.
+  - 다음은 People 컬렉션을 로드한 후에 렌더링하도록 하는 코드입니다. (ObjectDataProvider 태그와 RemotePeopleLoader 클래스)
     ```cs
     ...
     public class Person : INotifyPropertyChanged {...}
@@ -1622,7 +1622,7 @@
       <ListBox ItemsSource="{Binding}" .../>
     </Grid>
     ```
-  - 이제 오브젝트 데이터 공급자가 데이터와 바인딩 사이의 중개자 역할을 하므로 거기서 데이터를 가져와야 합니다.
+  - 이제 오브젝트 데이터 공급자가 데이터와 바인딩 사이의 중개자 역할을 하므로 거기서 데이터를 가져와야 합니다. (DataSourceProvider 클래스)
     ```cs
     public partial class Window1 : Window {
       ...
@@ -1650,10 +1650,19 @@
     ```
 
 * 비동기식 데이터 수신
-
-...
+  - 동기식으로 데이터를 수신하면 그것을 다 받을 때까지는 UI 스레드가 차단됩니다.
+  - UI 스레드가 계속 작동하면서도 데이터를 가져오는데 시간이 오래 걸릴 경우 다음과 같이 비동기식으로 데이터를 가져오게 됩니다. (IsAsynchronous="True")
+    ```xaml
+    <ObjectDataProvider
+      x:Key="Family"
+      ObjectType="{x:Type local:RemotePeopleLoader}"
+      IsAsynchronous="True"
+      MethodName="LoadPeople" />
+    ```
 
 * 파라미터 전달
+  - 오브젝트 데이터 공급자는 MethodParameters 프로퍼티를 제공하는데 이것은 데이터를 검색하는 메서드에게 전달될 오브젝트 컬렉션입니다.
+  - 다음은 데이터 검색을 시도할 URL 문자열 컬렉션을 전달하는 예제입니다.
 
 ...
 
