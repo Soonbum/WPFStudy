@@ -1662,7 +1662,39 @@
 
 * 파라미터 전달
   - 오브젝트 데이터 공급자는 MethodParameters 프로퍼티를 제공하는데 이것은 데이터를 검색하는 메서드에게 전달될 오브젝트 컬렉션입니다.
-  - 다음은 데이터 검색을 시도할 URL 문자열 컬렉션을 전달하는 예제입니다.
+  - 다음은 ObjectDataProvider를 통해 데이터 검색을 시도할 URL 문자열 컬렉션을 전달하는 예제입니다. (ObjectDataProvider.MethodParameters)
+    ```xaml
+    <Window ...
+      xmlns:sys="clr-namespace:System"
+      xmlns:local="clr-namespace:ObjectBinding">
+      <Window.Resources>
+        <ObjectDataProvider
+          x:Key="Family"
+          ObjectType="{x:Type local:RemotePeopleLoader}"
+          IsAsynchronous="True"
+          MethodName="LoadPeople">
+          <ObjectDataProvider.MethodParameters>
+            <sys:String>http://sellsbrothers.com/boys.dat</sys:String>
+            <sys:String>http://sellssisters.com/girls.dat</sys:String>
+          </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+        ...
+      </Window.Resources>
+      ...
+    </Window>
+    ```
+  - LoadPeople 메서드를 수정하여 URL을 입력 받을 수 있게 합니다.
+    ```cs
+    namespace PersonBinding {
+      public class RemotePeopleLoader : People {
+        public People LoadPeople(string url1, string url2) {
+          // Load People from afar using two URLs
+          ...
+        }
+    }
+    ```
+
+* 관계형 데이터와 바인딩
 
 ...
 
@@ -1816,4 +1848,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 254/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 256/867 -->
