@@ -1695,8 +1695,385 @@
     ```
 
 * 관계형 데이터와 바인딩
+  - 다음과 같은 Access 데이터베이스 예제가 주어졌다고 간주하고 진행하겠습니다. (family.mdb)
+    | ID | Name | Age |
+    | -- | ---- | --- |
+    |  1 | Tom  |  11 |
+    |  2 | John |  12 |
+    |  3 | Melissa | 38 |
+  - 서버 탐색기(Server Explorer) > 데이터 연결(Data Connection) > 연결 추가(Add Connection)를 통해 데이터베이스 파일을 연결합니다.
+  - People 테이블을 디자이너 화면에 끌어다 놓으면 다음과 같이 3가지 클래스가 생성됩니다.
+    ```cs
+    namespace AdoBinding {
+      ...
+      public partial class Family : System.Data.DataSet {
+        ...
+        public partial class PeopleRow : System.Data.DataRow {
+          ...
+          public int ID { get {...} set {...} } }
+          public string Name { get {...} set {...} } }
+          public int Age { get {...} set {...} } }
+          ...
+        }
+        public partial class PeopleDataTable :
+          System.Data.DataTable, System.Collections.IEnumerable {
+          ...
+          public PeopleRow AddPeopleRow(string Name, int Age) {...}
+          public PeopleRow FindByID(int ID) {...}
+          public void RemovePeopleRow(PeopleRow row) {...}
+          ...
+        }
+      }
+      namespace FamilyTableAdapters {
+        ...
+        public partial class PeopleTableAdapter :
+          System.ComponentModel.Component {
+          ...
+          public virtual Family.PeopleDataTable GetData() {...}
+          ...
+        }
+      }
+    }
+    ```
+    * PeopleRow 클래스: ADO.NET에 내장된 DataRow 클래스를 타입화하여 감싼 래퍼(wrapper)입니다. 이 클래스는 기본 데이터베이스 유형과 CLR 유형 간의 매핑을 담당합니다. WPF에서 관계형 데이터에 바인딩할 때, 여러분은 이러한 DataRow 파생 객체들로 채워진 DataTable에 바인딩하게 될 것입니다.
+    * PeopleDataTable 클래스: PeopleRow 객체를 생성하고 찾는 가장 빠른 방법을 알고 있습니다.
+    * PeopleTableAdapter 클래스: Access로부터 데이터를 읽고 쓰는 방법, 데이터를 가져오는 방법, 그리고 변경 사항을 추적하여 데이터베이스에 다시 반영(pushing back)하는 방법을 알고 있습니다.
+  - 연결 문자열(connection string)이 app.config 파일에 추가되어 코드와 분리된 채로 유지 보수가 가능합니다.
+    ```xml
+    <?xml version="1.0" encoding="utf-8" ?>
+     <configuration>
+      <connectionStrings>
+        <add name="AdoBinding.Properties.Settings.familyConnectionString"
+          connectionString="Provider=Microsoft.Jet.OLEDB.4.0;Data Source=family.mdb"
+          providerName="System.Data.OleDb" />
+      </connectionStrings>
+    </configuration>
+    ```
+  - 메인 윈도우의 생성자에서 PeopleTableAdapter의 인스턴스를 생성하고 GetData를 호출하여 바인딩할 수 있습니다.
+    ```cs
+    public Window1() {
+      InitializeComponent();
 
-...
+      // 동기적 바인딩
+      DataContext = (new FamilyTableAdapters.PeopleTableAdapter()).GetData();
+      ...
+    }
+    ```
+    ```xaml
+    <!-- Window1.xaml -->
+    <!-- 비동기적 바인딩 -->
+     <Window ...
+      xmlns:local="clr-namespace:AdoBinding"
+      xmlns:tableAdapters="clr-namespace:AdoBinding.FamilyTableAdapters">
+      <Window.Resources>
+        <ObjectDataProvider
+          x:Key="Family"
+          ObjectType="{x:Type tableAdapters:PeopleTableAdapter}"
+          IsAsynchronous="True"
+          MethodName="GetData" />
+        <local:AgeToForegroundConverter x:Key="ageConverter" />
+      </Window.Resources>
+      <Grid DataContext="{StaticResource Family}">
+        ...
+        <ListBox ... ItemsSource="{Binding}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock>
+                <TextBlock Text="{Binding Path=Name}" />
+                (age: <TextBlock Text="{Binding Path=Age}"
+                  Foreground="
+                    {Binding
+                      Path=Age,
+                      Converter=
+                        {StaticResource ageConverter}}" />)
+              </TextBlock>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        ...
+      </Grid>
+    </Window>
+    ```
+  - 다음은 PeopleRow 객체에 접근/추가/필터링하는 방법에 대한 예제입니다.
+    ```cs
+    // Window1.xaml.cs
+    ...
+    using System.Data;
+    using System.Data.OleDb;
+    public partial class Window1 : Window {
+      public Window1() {
+        InitializeComponent();
+
+        this.birthdayButton.Click += birthdayButton_Click;
+        this.backButton.Click += backButton_Click;
+        this.forwardButton.Click += forwardButton_Click;
+        this.addButton.Click += addButton_Click;
+        this.sortButton.Click += sortButton_Click;
+        this.filterButton.Click += filterButton_Click;
+        this.groupButton.Click += groupButton_Click;
+      }
+      ICollectionView GetFamilyView() {
+        DataSourceProvider provider = (DataSourceProvider)this.FindResource("Family");
+        return CollectionViewSource.GetDefaultView(provider.Data);
+      }
+      void birthdayButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        // 각각의 아이템은 DataRowView입니다. 이걸로 타입화된 PersonRow에 접근할 수 있습니다.
+        AdoBinding.Family.PeopleRow person = (AdoBinding.Family.PeopleRow)((DataRowView)view.CurrentItem).Row;
+        ++person.Age;
+        MessageBox.Show(string.Format("Happy Birthday, {0}, age {1}!", person.Name, person.Age), "Birthday");
+      }
+      void backButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        view.MoveCurrentToPrevious();
+        if( view.IsCurrentBeforeFirst ) {
+          view.MoveCurrentToFirst( );
+        }
+      }
+      void forwardButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        view.MoveCurrentToNext();
+        if( view.IsCurrentAfterLast ) {
+          view.MoveCurrentToLast( );
+        }
+      }
+      void addButton_Click(object sender, RoutedEventArgs e) {
+        // 새로운 PeopleRow 만들기
+        DataSourceProvider provider = (DataSourceProvider)this.FindResource("Family");
+        AdoBinding.Family.PeopleDataTable table = (AdoBinding.Family.PeopleDataTable)provider.Data;
+        table.AddPeopleRow("Chris", 37);
+      }
+      void sortButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        if( view.SortDescriptions.Count == 0 ) {
+          view.SortDescriptions.Add(new SortDescription("Name", ListSortDirection.Ascending));
+          view.SortDescriptions.Add(new SortDescription("Age", ListSortDirection.Descending));
+        }
+        else {
+          view.SortDescriptions.Clear( );
+        }
+      }
+      void filterButton_Click(object sender, RoutedEventArgs e) {
+        // Filter 프로퍼티를 설정할 수 없습니다. 대신 BindingListCollectionView의 CustomFilter를 설정할 수 있습니다.
+        BindingListCollectionView view = (BindingListCollectionView)GetFamilyView();
+        if( string.IsNullOrEmpty(view.CustomFilter) ) {
+          view.CustomFilter = "Age > 25";
+        }
+        else {
+          view.CustomFilter = null;
+        }
+      }
+      void groupButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        if( view.GroupDescriptions.Count == 0 ) {
+          // 나이별로 그룹화
+          view.GroupDescriptions.Add(new PropertyGroupDescription("Age"));
+        }
+        else {
+          view.GroupDescriptions.Clear( );
+        }
+      }
+    }
+    ```
+
+* XML 데이터 소스 공급자
+  - 다음은 XML로 표현된 family 데이터입니다.
+    ```xml
+    <Family xmlns="http://sellsbrothers.com">
+      <Person Name="Tom" Age="11" />
+      <Person Name="John" Age="12" />
+      <Person Name="Melissa" Age="38" />
+    </Family>
+    ```
+  - 다음은 XmlDataProvider를 사용하여 바인딩하는 예제입니다. (네임스페이스 접두사를 사용하면 Person 요소 집합을 찾는 XPath 구문을 구성할 수 있음)
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ...>
+      <Window.Resources>
+        <XmlDataProvider
+          x:Key="Family"
+          Source="family.xml"
+          XPath="/sb:Family/sb:Person">
+          <XmlDataProvider.XmlNamespaceManager>
+            <XmlNamespaceMappingCollection>
+              <XmlNamespaceMapping Uri="http://sellsbrothers.com" Prefix="sb" />
+            </XmlNamespaceMappingCollection>
+          </XmlDataProvider.XmlNamespaceManager>
+        </XmlDataProvider>
+        <local:AgeToForegroundConverter
+          x:Key="ageConverter" />
+      </Window.Resources>
+      <Grid DataContext="{StaticResource Family}">
+        ...
+        <ListBox ... ItemsSource="{Binding}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding XPath=@Name}" />
+                <TextBlock Text=" (age: " />
+                <TextBlock Text="{Binding XPath=@Age}"
+                  Foreground="{Binding XPath=@Age,
+                                Converter={StaticResource ageConverter}}" />
+                <TextBlock Text=")" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        ...
+      </Grid>
+    </Window>
+    ```
+  - XML 데이터 아일랜드: 내장된 XML 데이터 소스를 의미하며 컴파일 타임에 데이터를 미리 알 수 있음
+    ```xaml
+    <XmlDataProvider x:Key="Family" XPath="/sb:Family/sb:Person">
+      <XmlDataProvider.XmlNamespaceManager>
+        <XmlNamespaceMappingCollection>
+          <XmlNamespaceMapping Uri="http://sellsbrothers.com" Prefix="sb" />
+        </XmlNamespaceMappingCollection>
+      </XmlDataProvider.XmlNamespaceManager>
+      <x:XData>
+        <Family xmlns="http://sellsbrothers.com">
+          <Person Name="Tom" Age="11" />
+          <Person Name="John" Age="12" />
+          <Person Name="Melissa" Age="38" />
+        </Family>
+      </x:XData>
+    </XmlDataProvider>
+    ```
+  - 다음 코드는 오브젝트 데이터 소스 대신 XML 데이터 소스를 사용할 수 있도록 수정된 것입니다.
+    ```cs
+    // Window1.xaml.cs
+    ...
+    using System.Xml;
+    public partial class Window1 : Window {
+      public Window1() {
+        InitializeComponent();
+
+        this.birthdayButton.Click += birthdayButton_Click;
+        this.backButton.Click += backButton_Click;
+        this.forwardButton.Click += forwardButton_Click;
+        this.addButton.Click += addButton_Click;
+        this.sortButton.Click += sortButton_Click;
+        this.filterButton.Click += filterButton_Click;
+        this.groupButton.Click += groupButton_Click;
+      }
+      ICollectionView GetFamilyView() {
+        DataSourceProvider provider = (DataSourceProvider)this.FindResource("Family");
+        return CollectionViewSource.GetDefaultView(provider.Data);
+      }
+      void birthdayButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        // 각각의 "person"은 XmlElement이며 애트리뷰트 값은 문자열 기반 인덱서로부터 가져옵니다.
+        XmlElement person = (XmlElement)view.CurrentItem;
+        person.SetAttribute("Age", (int.Parse(person.Attributes["Age"].Value) + 1).ToString());
+        MessageBox.Show(string.Format("Happy Birthday, {0}, age {1}!", person.Attributes["Name"].Value, person.Attributes["Age"].Value), "Birthday");
+      }
+      void backButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        view.MoveCurrentToPrevious();
+        if( view.IsCurrentBeforeFirst ) {
+          view.MoveCurrentToFirst( );
+        }
+      }
+      void forwardButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        view.MoveCurrentToNext();
+        if( view.IsCurrentAfterLast ) {
+          view.MoveCurrentToLast( );
+        }
+      }
+      void addButton_Click(object sender, RoutedEventArgs e) {
+        // 새로운 XmlElement 만들기
+        XmlDataProvider provider = (XmlDataProvider)this.FindResource("Family");
+        XmlElement person = provider.Document.CreateElement("Person", "http://sellsbrothers.com");
+        person.SetAttribute("Name", "Chris");
+        person.SetAttribute("Age", "37");
+        provider.Document.ChildNodes[0].AppendChild(person);
+      }
+      void sortButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        if( view.SortDescriptions.Count == 0 ) {
+          view.SortDescriptions.Add(new SortDescription("@Name", ListSortDirection.Ascending));
+          view.SortDescriptions.Add(new SortDescription("@Age", ListSortDirection.Descending));
+        }
+        else {
+          view.SortDescriptions.Clear( );
+        }
+      }
+      void filterButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        if( view.Filter == null ) {
+          view.Filter = delegate(object item) {
+            return int.Parse(((XmlElement)item).Attributes["Age"].Value) > 25;
+          };
+        }
+        else {
+          view.Filter = null;
+        }
+      }
+      void groupButton_Click(object sender, RoutedEventArgs e) {
+        ICollectionView view = GetFamilyView();
+        if( view.GroupDescriptions.Count == 0 ) {
+          // 나이별로 그룹화
+          view.GroupDescriptions.Add(new PropertyGroupDescription("@Age"));
+        }
+        else {
+          view.GroupDescriptions.Clear( );
+        }
+      }
+    }
+    ```
+  - 다음은 데이터 소스 공급자가 없는 XML 바인딩 예제 코드입니다. (수동으로 XML 로드)
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ...>
+      <Window.Resources>
+        <!-- XmlDataProvider 없음 -->
+        <local:AgeToForegroundConverter x:Key="ageConverter" />
+      </Window.Resources>
+      <!-- 코드 비하인드에서 DataContext 설정 -->
+      <Grid Name="grid">...</Grid>
+    </Window>
+    ```
+    ```cs
+    // Window1.xaml.cs
+    ...
+    public partial class Window1 : Window {
+      // family XML 문서
+      XmlDocument doc;
+      public Window1() {
+        ...
+        LoadFamilyXml();
+      }
+      void LoadFamilyXml() {
+        // XmlDocument를 이용하여 XML 로드
+        doc = new XmlDocument();
+        doc.Load("family.xml");
+        // 바인딩에서 사용할 수 있도록 네임스페이스 접두사 매핑을 만듭니다.
+        XmlNamespaceManager manager = new XmlNamespaceManager(doc.NameTable);
+        manager.AddNamespace("sb", "http://sellsbrothers.com");
+        Binding.SetXmlNamespaceManager(grid, manager);
+        // 데이터 바인딩을 위해 XML을 사용 가능하게 만듭니다. 여기서 바인딩을 사용하는 이유는 소스 문서가 변경될 때 이를 감지하여 XPath 쿼리가 반환하는 노드 집합을 새로 고칠 수 있기 때문입니다.
+        Binding b = new Binding();
+        b.XPath = "/sb:Family/sb:Person";
+        b.Source = doc;
+        grid.SetBinding(Grid.DataContextProperty, b);
+      }
+      ICollectionView GetFamilyView() {
+        // 데이터로부터 직접 가져온 기본 뷰
+        return CollectionViewSource.GetDefaultView(grid.DataContext);
+      }
+      ...
+      void addButton_Click(object sender, RoutedEventArgs e) {
+        // 새로운 XmlElement 만들기
+        XmlElement person = doc.CreateElement("Person", "http://sellsbrothers.com");
+        person.SetAttribute("Name", "Chris");
+        person.SetAttribute("Age", "37");
+        doc.DocumentElement.AppendChild(person);
+      }
+      ...
+    }
+    ```
 
 ### Master-Detail 바인딩
 
@@ -1848,4 +2225,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 256/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 268/867 -->
