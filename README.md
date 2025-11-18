@@ -2266,7 +2266,83 @@
 
 ### 계층적 바인딩
 
-...
+* Master-Detail 바인딩은 일반적으로 고정된 수의 레벨에 한해 사용됩니다.
+  - 계층적 바인딩은 트리 바인딩이라고도 하며 런타임 동안 알 수 없는 레벨을 포함할 수 있습니다.
+  - TreeView 컨트롤의 루트 아이템을 Families 데이터의 최상위에 바인딩할 것입니다.
+    ```xaml
+    <Window ...>
+      <Window.Resources>
+        <local:Families x:Key="Families">
+          ...
+        </local:Families>
+      </Window.Resources>
+      <TreeView DataContext="{StaticResource Families}">
+        <TreeViewItem ItemsSource="{Binding}" Header="Families" />
+      </TreeView>
+    </Window>
+    ```
+  - 다음은 조금 나아진 계층적 데이터 바인딩입니다.
+    ```xaml
+    <Window ...>
+      <Window.Resources>
+        <local:Families x:Key="Families">
+          ...
+        </local:Families>
+        <DataTemplate DataType="{x:Type local:Family}">
+          <TextBlock Text="{Binding Path=FamilyName}" />
+        </DataTemplate>
+      </Window.Resources>
+      <TreeView DataContext="{StaticResource Families}">
+        <TreeViewItem ItemsSource="{Binding}" Header="Families" />
+      </TreeView>
+    </Window>
+    ```
+  - 계층적 데이터 바인딩의 다음 레벨입니다.
+    ```xaml
+    <Window ...>
+      <Window.Resources>
+        <local:Families x:Key="Families">
+          ...
+        </local:Families>
+        <HierarchicalDataTemplate DataType="{x:Type local:Family}"
+          ItemsSource="{Binding Path=Members}">
+          <TextBlock Text="{Binding Path=FamilyName}" />
+        </HierarchicalDataTemplate>
+      </Window.Resources>
+      <TreeView DataContext="{StaticResource Families}">
+        <TreeViewItem ItemsSource="{Binding}" Header="Families" />
+      </TreeView>
+    </Window>
+    ```
+  - 모든 계층적 노드 연결하기
+    ```xaml
+    <Window ...>
+      <Window.Resources>
+        <local:Families x:Key="Families">
+          ...
+        </local:Families>
+     <HierarchicalDataTemplate DataType="{x:Type local:Family}"
+          ItemsSource="{Binding Path=Members}">
+          <TextBlock Text="{Binding Path=FamilyName}" />
+        </HierarchicalDataTemplate>
+     <HierarchicalDataTemplate DataType="{x:Type local:Person}"
+          ItemsSource="{Binding Path=Traits}">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Path=Name}" />
+            <TextBlock Text=" (age: " />
+            <TextBlock Text="{Binding Path=Age}" />
+            <TextBlock Text=")" />
+          </StackPanel>
+        </HierarchicalDataTemplate>
+     <DataTemplate DataType="{x:Type local:Trait}">
+          <TextBlock Text="{Binding Path=Description}" />
+        </DataTemplate>
+      </Window.Resources>
+      <TreeView DataContext="{StaticResource Families}">
+        <TreeViewItem ItemsSource="{Binding}" Header="Families" />
+      </TreeView>
+    </Window>
+    ```
 
 ## 스타일
 
@@ -2410,4 +2486,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 275/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 280/867 -->
