@@ -2077,7 +2077,192 @@
 
 ### Master-Detail 바인딩
 
-...
+* 앞에서는 단일 오브젝트에 대한 바인딩, 여러 오브젝트의 단일 리스트에 대한 바인딩을 보았습니다.
+  - 이것 외에도 연관된 여러 개의 리스트를 바인딩할 수도 있습니다.
+  - 예를 들어, 고객(customer) 리스트를 보여주고 나서 그 중 하나를 선택하면 해당 고객과 관련된 주문(order) 리스트를 보여주고 싶다면 Master-Detail 바인딩이 필요합니다.
+  - Master-Detail 바인딩은 필터링의 한 형태입니다. (고객 리스트는 Master 리스트, 주문 리스트는 Detail 리스트이며 Master 리스트에서 필터링 파라미터를 지정합니다)
+  - 예제 데이터는 다음과 같습니다.
+    ```cs
+    public class Person {
+      string name;
+      public string Name {
+        get { return name; }
+        set { name = value; }
+      }
+      int age;
+      public int Age {
+        get { return age; }
+        set { age = value; }
+      }
+    }
+    public class People : ObservableCollection<Person> {}
+    public class Family {
+      string familyName;
+      public string FamilyName {
+        get { return familyName; }
+        set { familyName = value; }
+      }
+      People members;
+      public People Members {
+        get { return members; }
+        set { members = value; }
+      }
+    }
+    public class Families : ObservableCollection<Family> {}
+    ```
+  - 다음은 Master-Detail 데이터를 선언한 것입니다. Families 컬렉션은 Family 클래스의 인스턴스를 보관하는 Master 데이터를 형성하고, Family는 People 타입인 Members 프로퍼티를 가지고 있습니다. People은 Detail인 Person 데이터를 가지고 있습니다.
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ... xmlns:local="clr-namespace:MasterDetailBinding">
+      <Window.Resources>
+        <local:Families x:Key="Families">
+          <local:Family FamilyName="Stooge">
+            <local:Family.Members>
+              <local:People>
+                <local:Person Name="Larry" Age="21" />
+                <local:Person Name="Curly" Age="22" />
+                <local:Person Name="Moe" Age="23" />
+              </local:People>
+            </local:Family.Members>
+          </local:Family>
+          <local:Family FamilyName="Addams">
+            <local:Family.Members>
+              <local:People>
+                <local:Person Name="Gomez" Age="135" />
+                <local:Person Name="Morticia" Age="121" />
+                <local:Person Name="Fester" Age="137" />
+              </local:People>
+            </local:Family.Members>
+          </local:Family>
+        </local:Families>
+      </Window.Resources>
+      ...
+    </Window>
+    ```
+  - Master인 Family 데이터에 바인딩하기
+    ```xaml
+    <!-- Window1.xaml -->
+    <Window ...>
+      <Window.Resources>
+        <local:Families x:Key="Families">...</local:Families>
+      </Window.Resources>
+      <Grid DataContext="{StaticResource Families}">
+        ...
+        <!-- Families Column -->
+        <TextBlock Grid.Row="0" Grid.Column="0">Families:</TextBlock>
+        <ListBox Grid.Row="1" Grid.Column="0"
+          IsSynchronizedWithCurrentItem="True"
+          ItemsSource="{Binding}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Path=FamilyName}" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+    </Window>
+    ```
+  - Detail인 Person 데이터 바인딩하기
+    ```xaml
+    <Grid DataContext="{StaticResource Families}">
+      ...
+      <!-- Families Column -->
+      ...
+      <!-- Members Column -->
+      <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal">
+        <TextBlock Text="{Binding Path=FamilyName}" />
+        <TextBlock Text=" Family Members:" />
+      </StackPanel>
+      <ListBox Grid.Row="1" Grid.Column="1"
+        IsSynchronizedWithCurrentItem="True"
+        ItemsSource="{Binding Path=Members}" >
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{Binding Path=Name}" />
+              <TextBlock Text=" (age: " />
+              <TextBlock Text="{Binding Path=Age}" />
+              <TextBlock Text=" )" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    ```
+  - Detail의 3번째 레벨 추가하기
+    ```cs
+    public class Person {
+      string name;
+      public string Name {
+        get { return name; }
+        set { name = value; }
+      }
+      int age;
+      public int Age {
+        get { return age; }
+        set { age = value; }
+      }
+      Traits traits;
+      public Traits Traits {
+        get { return traits; }
+        set { traits = value; }
+      }
+    }
+    public class Traits : ObservableCollection<Trait> {}
+    public class Trait {
+      string description;
+      public string Description {
+        get { return description; }
+        set { description = value; }
+      }
+    }
+    ```
+  - Detail의 3번째 레벨 선언하기
+    ```xaml
+    <local:Families x:Key="Families">
+      <local:Family FamilyName="Stooge">
+        <local:Family.Members>
+          <local:People>
+            <local:Person Name="Larry" Age="21">
+              <local:Person.Traits>
+                <local:Traits>
+                  <local:Trait Description="In Charge" />
+                  <local:Trait Description="Mean" />
+                  <local:Trait Description="Ugly" />
+                </local:Traits>
+              </local:Person.Traits>
+            </local:Person>
+            <local:Person Name="Curly" Age="22" >...</local:Person>
+            ...
+          </local:People>
+        </local:Family.Members>
+        ...
+      </local:Family>
+      ...
+    </local:Families>
+    ```
+  - Detail 데이터의 3번째 레벨에 바인딩하기
+```xaml
+<Grid DataContext="{StaticResource Families}">
+  ...
+  <!-- Families Column -->
+  ...
+  <!-- Members Column -->
+  ...
+  <!-- Traits Column -->
+  <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal">
+    <TextBlock Text="{Binding Path=Members/Name}" />
+    <TextBlock Text=" Traits:" />
+  </StackPanel>
+  <ListBox Grid.Row="1" Grid.Column="2"
+    IsSynchronizedWithCurrentItem="True"
+    ItemsSource="{Binding Path=Members/Traits}" >
+    <ListBox.ItemTemplate>
+      <DataTemplate>
+        <TextBlock Text="{Binding Path=Description}" />
+      </DataTemplate>
+    </ListBox.ItemTemplate>
+  </ListBox>
+</Grid>
+```
 
 ### 계층적 바인딩
 
@@ -2225,4 +2410,4 @@
 
 
 
-<!-- Programming WPF 2nd edition 참조... 페이지 268/867 -->
+<!-- Programming WPF 2nd edition 참조... 페이지 275/867 -->
